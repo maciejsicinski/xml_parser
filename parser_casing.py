@@ -32,31 +32,29 @@ def process_file(filename, output_file):
     with open(filename, "r", encoding="iso-8859-15") as fh:
         doc = ET.parse(fh)
         root = doc.getroot()
-        mcnt = 0
-        sql_qry_cnt = 0
+        source_cnt = 0
         for child in root.iter():
-            if(child.tag == "MAPPING"):
-                mnam = child.attrib["NAME"]
-                mcnt += 1
-                sql_qry_fnd = False
+            if(child.tag == "FOLDER"):
+                folder_name = child.attrib["NAME"]
+                print(folder_name)
                 if len(child) > 0:
                     tas = []
-                    findNodes(child, "TABLEATTRIBUTE", tas)
+                    findNodes(child, "SOURCE", tas)
+                    print(child)
                     for ta in tas:
-                        val = getValue(ta, ["Sql Query","Lookup Sql Override", "Pre SQL", "Post SQL"])
-                        if sql_qry_fnd == False:
-                            if val is not None and len(val) > 0:
-                                sql_qry_cnt += 1
-                                sql_qry_fnd = True
-                if sql_qry_fnd:
-                    output_file.write(f"Mapping {mnam} has Sql Query\n")
+                        source_name = getValue(ta, ["NAME"])
+                        if source_name is not None and len(source_name):
+                            print(source_name)
+                            source_cnt += 1
 
-        output_file.write(f"File: {filename}\n")
-        output_file.write(f"Total Mappings: {mcnt}\n")
-        output_file.write(f"Mappings with Sql Query: {sql_qry_cnt}\n")
-        output_file.write("\n")
 
-        return mcnt, sql_qry_cnt
+
+        #output_file.write(f"File: {filename}\n")
+        #output_file.write(f"Total Mappings: {mcnt}\n")
+        #output_file.write(f"Mappings with Sql Query: {sql_qry_cnt}\n")
+        #output_file.write("\n")
+
+        return source_cnt
 
 # Folder path to scan
 folder_path = "/Users/MaciejSicinski/infa_exports"
@@ -65,8 +63,7 @@ folder_path = "/Users/MaciejSicinski/infa_exports"
 output_file_path = "/Users/MaciejSicinski/xml_parsing/output.txt"
 
 # Variables to store the total counts
-total_mcnt = 0
-total_sql_qry_cnt = 0
+total_source_cnt= 0
 
 # Open the output file in write mode
 with open(output_file_path, "w") as output_file:
@@ -74,14 +71,13 @@ with open(output_file_path, "w") as output_file:
     for filename in os.listdir(folder_path):
         if filename.endswith(".XML"):
             file_path = os.path.join(folder_path, filename)
-            mcnt, sql_qry_cnt = process_file(file_path, output_file)
-            total_mcnt += mcnt
-            total_sql_qry_cnt += sql_qry_cnt
+            source_cnt = process_file(file_path, output_file)
+            total_source_cnt += source_cnt
 
 # Write the total counts to the output file
-with open(output_file_path, "a") as output_file:
-    output_file.write("Total Counts:\n")
-    output_file.write(f"Total Mappings: {total_mcnt}\n")
-    output_file.write(f"Total Mappings with Sql Query: {total_sql_qry_cnt}\n")
+#with open(output_file_path, "a") as output_file:
+#    output_file.write("Total Counts:\n")
+#    output_file.write(f"Total Mappings: {total_mcnt}\n")
+#    output_file.write(f"Total Mappings with Sql Query: {total_sql_qry_cnt}\n")
 
-print("Program executed successfully. Output saved to the file:", output_file_path)
+#print("Program executed successfully. Output saved to the file:", output_file_path)
