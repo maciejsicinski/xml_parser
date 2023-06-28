@@ -1,0 +1,13 @@
+sql_extract/
+*.csv
+teradata_transalator/
+xml_metadata/
+view_ddl_files/
+output.txt
+sql_queries.txt
+output.txt
+sql_queries_columns.txt
+sql_queries_tables.txt
+output.txt
+casing_isues_sql_override_tables.txt
+dev_stg_views.txt

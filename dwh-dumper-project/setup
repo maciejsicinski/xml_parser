@@ -1,0 +1,62 @@
+
+mkdir xml_metadata
+
+gsutil -m cp -r gs://teradata_metadata/informatica/dev/* xml_metadata/
+
+mkdir teradata_metadata_extract
+
+gsutil cp gs://teradata_metadata/teradata/dev/dwh-dumper-extract/dwh-migration-teradata-metadata.zip teradata_metadata_extract/
+
+cd (the path you want to have the dwh dumper reopository cloned to)
+
+gh repo clone google/dwh-migration-tools
+
+#download a parser to a location of choice:
+
+https://github.com/maciejsicinski/xml_parser/blob/main/sql_query_casing_parser.py
+
+#modify the paths
+
+# Folder path to scan
+folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata"
+
+# Output directory path
+output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract"
+
+#run the parser 
+python sql_query_casing_parser.py
+
+#it will create 1 file in the "output_dir_path" for each sql query find in the xml file in "folder_path" folder
+
+#follow the instruction on how to setup dwh-dumper (dwh-migration-tools repo)
+
+#create directory for the translation project
+
+mkdir teradata_transalator
+
+cp -R /Users/MaciejSicinski/dwh-migration-tools/client/examples/teradata/sql teradata_transalator
+
+cd teradata_transalator
+
+python3 -m venv venv
+source venv/bin/activate
+pip install /Users/MaciejSicinski/dwh-migration-tools/client
+
+cd sql
+
+rm -rf input/*
+
+#copy exported sql queries into input folders
+
+find /Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract -type f -exec rsync -av --progress {} input/ \;
+
+export BQMS_VERBOSE="False"
+export BQMS_MULTITHREADED="True"
+export BQMS_PROJECT="gcp-ch-d-prj-i-edp"
+export BQMS_GCS_BUCKET="translation_gcp_api/dev"
+
+cd config
+
+vim config.yaml
+
+#change default databse to Dev_Stg
