@@ -111,10 +111,15 @@ output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extr
 os.makedirs(output_dir_path, exist_ok=True)
 
 # global counts
+#count of all the queries
 cnt = 0
+#count of all the queries with error
 cnte = 0
+#count of all valid queries+source qualifier combo
 cntv = 0
+#count of all the mappings
 cntm = 0
+#count of all the mappings with at least 1 invalid source qualifier
 cntme = 0
 
 # Process each file in the folder
