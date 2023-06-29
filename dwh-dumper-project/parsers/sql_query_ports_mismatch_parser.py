@@ -1,6 +1,15 @@
 import os
 import xml.etree.ElementTree as ET
 import re
+import sqlglot
+import sqlglot.expressions as exp
+from sqlglot import parse_one, exp
+
+def find_columns(query):
+    column_names = []
+    for expression in sqlglot.parse_one(query).find(exp.Select).args["expressions"]:
+        column_names.append(expression.alias_or_name)
+    return column_names
 
 def findNode(node, nodename):
     res = None
@@ -45,22 +54,36 @@ def process_file(filename, output_dir):
                 for sq in child.iter("TRANSFORMATION"):
                     tname = sq.attrib["NAME"]
                     ttype = sq.attrib["TYPE"]
+                    if ttype == "Source Qualifier":
+                        port_names = []
+                        for field in sq.iter("TRANSFORMFIELD"):
+                            port_names.append(field.attrib["NAME"])
                     for ta in sq.iter("TABLEATTRIBUTE"):
                         val = getValue(ta, ["Sql Query"])
                         if val is not None and len(val) > 0:
-                            seq += 1
                             output_file_name = f"{folder_name}#{mapping_name}#{tname}#{ttype}#{seq}.sql"
                             output_file_name = output_file_name.replace(" ", "")
                             output_file_path = os.path.join(output_dir, output_file_name)
+                            print(output_file_path)
+                            print(val)
+                            sql_columns = []
+                            sql_columns = find_columns(val)
+
                             print(f"Creating file: {output_file_path}") 
+                            print(sql_columns)
+                            print(port_names)
                             with open(output_file_path, "w") as output_file:
-                                output_file.write(val + "\n")
+                                output_file.write("ports" + "\n")
+                                output_file.write(str(port_names) + "\n")
+                                output_file.write("columns" + "\n")
+                                output_file.write(str(sql_columns) + "\n")
+
 
 # Folder path to scan
 folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata"
 
 # Output directory path
-output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract"
+output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/columns"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
