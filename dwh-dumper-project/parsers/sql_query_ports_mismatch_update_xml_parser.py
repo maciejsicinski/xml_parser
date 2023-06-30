@@ -66,15 +66,15 @@ def process_file(filename, output_dir):
                 for sq in child.iter("TRANSFORMATION"):
                     tname = sq.attrib["NAME"]
                     ttype = sq.attrib["TYPE"]
+                    print(tname)
+                    print(ttype)
                     if ttype == "Source Qualifier":                      
                         port_names = []
                         field_nodes = list(sq.iter("TRANSFORMFIELD"))
                         for field in field_nodes:
-                            field_name = field.attrib["NAME"]
-                            if field_name.lower() in sql_columns:
-                                field.attrib["NAME"] = field_name.lower()
                             port_names.append(field.attrib["NAME"])
-                        port_names = [item.lower() for item in sorted(port_names)]
+                        port_names_sorted = [item.lower() for item in sorted(port_names)]
+                        print(port_names)
                     for ta in sq.iter("TABLEATTRIBUTE"):
                         val = getValue(ta, ["Sql Query"])
                         if val is not None and len(val) > 0:
@@ -84,17 +84,40 @@ def process_file(filename, output_dir):
                             output_file_path = os.path.join(output_dir, output_file_name)
                             sql_columns = []
                             sql_columns = find_columns(val)
-                            sql_columns = [item.lower() for item in sorted(sql_columns)]
+                            sql_columns_sorted= [item.lower() for item in sorted(sql_columns)]
+                            print(sql_columns)
                             if sql_columns == ["parse_error"]:
                                 cnte += 1
                             else:
-                                all_present = all(element in sql_columns for element in port_names)
+                                all_present = all(element in port_names_sorted for element in sql_columns_sorted)
+                                print(all_present)
                                 if all_present:
                                     cntv += 1
                                 else:
                                     if ef == 0:
                                         ef = 1
                                         cntme += 1
+                                    # Update NAME attribute values
+                                    for i, field in enumerate(sq.iter("TRANSFORMFIELD")):                                
+                                        if i < len(sql_columns):
+                                            print(field.attrib["NAME"])
+                                            print(sql_columns[i])
+                                            field.attrib["NAME"] = sql_columns[i] 
+                                     # Update XML file with modified values
+                                    with open(filename, "w", encoding="iso-8859-15") as fh:
+                                       fh.write(ET.tostring(root).decode("iso-8859-15"))
+                                    
+                                    #tree = ET.ElementTree(root)
+                                    #tree.write(filename, encoding="iso-8859-15", xml_declaration=True)
+
+                                    # Update XML file with modified values
+                                    #with open(filename, "r", encoding="iso-8859-15") as file:
+                                    #    xml_content = file.read()
+
+                                   # xml_content = re.sub(r'<TRANSFORMATION .*?</TRANSFORMATION>', ET.tostring(sq).decode("iso-8859-15"), xml_content, flags=re.DOTALL)
+
+                                    #with open(filename, "w", encoding="iso-8859-15") as file:
+                                     #   file.write(xml_content)
                             with open(output_file_path, "w") as output_file:
                                 output_file.write("ports" + "\n")
                                 output_file.write(str(port_names) + "\n")
@@ -104,10 +127,10 @@ def process_file(filename, output_dir):
 
 
 # Folder path to scan
-folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata"
+folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata_test"
 
 # Output directory path
-output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/columns"
+output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/columns_test"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
