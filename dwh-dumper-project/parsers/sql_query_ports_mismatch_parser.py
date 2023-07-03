@@ -60,7 +60,7 @@ def process_file(filename, output_dir):
             folder_name = folder.attrib["NAME"]
             for child in folder.iter("MAPPING"):
                 ef = 0
-                cntm += 1
+                cntm +=1
                 mapping_name = child.attrib["NAME"]
                 seq = 0
                 for sq in child.iter("TRANSFORMATION"):
@@ -68,46 +68,50 @@ def process_file(filename, output_dir):
                     ttype = sq.attrib["TYPE"]
                     if ttype == "Source Qualifier":                      
                         port_names = []
-                        field_nodes = list(sq.iter("TRANSFORMFIELD"))
-                        for field in field_nodes:
-                            field_name = field.attrib["NAME"]
-                            if field_name.lower() in sql_columns:
-                                field.attrib["NAME"] = field_name.lower()
+                        for field in sq.iter("TRANSFORMFIELD"):
                             port_names.append(field.attrib["NAME"])
-                        port_names = [item.lower() for item in sorted(port_names)]
+                        port_names = [item.lower() for item in port_names]
+                        port_names.sort()                        
                     for ta in sq.iter("TABLEATTRIBUTE"):
                         val = getValue(ta, ["Sql Query"])
                         if val is not None and len(val) > 0:
+                            flag=0
                             cnt += 1
                             output_file_name = f"{folder_name}#{mapping_name}#{tname}#{ttype}#{seq}.sql"
                             output_file_name = output_file_name.replace(" ", "")
                             output_file_path = os.path.join(output_dir, output_file_name)
                             sql_columns = []
                             sql_columns = find_columns(val)
-                            sql_columns = [item.lower() for item in sorted(sql_columns)]
+                            sql_columns = [item.lower() for item in sql_columns]
+                            sql_columns.sort()
                             if sql_columns == ["parse_error"]:
                                 cnte += 1
                             else:
-                                all_present = all(element in sql_columns for element in port_names)
+                                all_present = all(element in port_names for element in sql_columns)
                                 if all_present:
+                                    flag=1
+                                    #print("valid")
                                     cntv += 1
                                 else:
+                                    #print("invalid")
                                     if ef == 0:
                                         ef = 1
-                                        cntme += 1
+                                        cntme += 1                            
+                            #print(f"Creating file: {output_file_path}") 
                             with open(output_file_path, "w") as output_file:
+                                if flag == 1:
+                                    output_file.write("valid" + "\n")
                                 output_file.write("ports" + "\n")
                                 output_file.write(str(port_names) + "\n")
                                 output_file.write("columns" + "\n")
                                 output_file.write(str(sql_columns) + "\n")
     return cnt, cnte, cntv, cntm, cntme
 
-
 # Folder path to scan
 folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata"
 
 # Output directory path
-output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/columns"
+output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/port_mismatch"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
