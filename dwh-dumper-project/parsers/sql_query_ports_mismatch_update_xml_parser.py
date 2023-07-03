@@ -1,6 +1,5 @@
 import os
 import xml.etree.ElementTree as ET
-import re
 import sqlglot
 import sqlglot.expressions as exp
 from sqlglot import parse_one, exp
@@ -50,16 +49,12 @@ def getValue(node, names):
         res = node.attrib["VALUE"]
     return res
 
-def process_file(filename, output_dir):
+def process_file(filename):
     with open(filename, "r", encoding="iso-8859-15") as fh:
         doc = ET.parse(fh)
         root = doc.getroot()
         for folder in root.iter("FOLDER"):
-            folder_name = folder.attrib["NAME"]
             for child in folder.iter("MAPPING"):
-                ef = 0
-                mapping_name = child.attrib["NAME"]
-                seq = 0
                 for sq in child.iter("TRANSFORMATION"):
                     tname = sq.attrib["NAME"]
                     ttype = sq.attrib["TYPE"]
@@ -115,5 +110,5 @@ for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
         #print(filename)
         file_path = os.path.join(folder_path, filename)
-        process_file(file_path, output_dir_path)
+        process_file(file_path)
 
