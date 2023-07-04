@@ -13,6 +13,25 @@ output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extr
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
 
+def updateConnectorFrom(mapping, transformation_name, name_from, name_to):
+    for connector in mapping.iter("CONNECTOR"):
+        print(connector.attrib["FROMINSTANCE"])
+        print(transformation_name)
+        print(connector.attrib["FROMFIELD"] )
+        print(name_from)
+        if connector.attrib["FROMINSTANCE"] == transformation_name and connector.attrib["FROMFIELD"] == name_from:
+            print (connector.attrib["FROMINSTANCE"])
+            print(connector.attrib["FROMFIELD"])
+            print(name_from)
+            print(connector.attrib["FROMFIELD"])
+            connector.attrib["FROMFIELD"] = name_to
+            print(connector.attrib["FROMFIELD"])
+
+def updateConnectorTo(mapping, transformation_name, name_from, name_to):
+    for connector in mapping.iter("CONNECTOR"):
+        if connector.attrib["TOINSTANCE"] == transformation_name and connector.attrib["TOFIELD"] == name_from:
+            connector.attrib["TOFIELD"] = name_to
+
 def getSqlQuery(transformation):
     sql_query =[]
     for ta in transformation.iter("TABLEATTRIBUTE"):
@@ -96,13 +115,13 @@ def process_file(filename):
                         #Only manipulate ports if they are connected (port is used further down the mapping)
                                 if field.attrib["NAME"] in connected_from:
                                     port_names.append(field.attrib["NAME"])
-                        print (sorted(port_names))
-                        print (sorted(connected_from))
-                        print (sorted(connected_to))
+                        print (port_names)
+                        print (connected_from)
+                        print (connected_to)
                         #port_names = [item.lower() for item in port_names]
                         sql_columns = []
                         sql_columns = find_columns(val)
-                        print(sorted(sql_columns))
+                        print(sql_columns)
                             # HERE ADD EMPTY ALIASES HANDLING
                             #sql_columns= [item.lower() for item in sql_columns]
                             # Don't update if the SQL parser returned an error
@@ -115,14 +134,28 @@ def process_file(filename):
                             # Update NAME attribute values
                             for i, field in enumerate(sq.iter("TRANSFORMFIELD")):                           
                                 if i < len(sql_columns):
-                                    if sql_columns[i]:
+                                    print("i < len sql")
+                                    print (sql_columns[i])
+                                    print(field.attrib["NAME"])
+                                    if sql_columns[i] != field.attrib["NAME"]:
+                                        print("rozne")
+                                        updateConnectorFrom(child, transformation_name, field.attrib["NAME"], sql_columns[i]) 
+                                        updateConnectorTo(child, transformation_name, field.attrib["NAME"], sql_columns[i]) 
                                         field.attrib["NAME"] = sql_columns[i] 
+                                        print("calling functions")
+
+                                    print(field.attrib["NAME"])
+                                 
                                 # HERE ADD NAME CONFLICT RESOLUTION
                             # Update XML file with modified values
 
-                                # HERE ADD XML FORMATTING/ENCODING/ETC to fit the source file format
-                                #with open(filename, "w", encoding="iso-8859-15") as fh:
-                                 #   fh.write(ET.tostring(root).decode("iso-8859-15"))
+                                # HERE ADD XML FORMATTING/ENCODING/ETC to fit the source file format COMMENTED OUT FOR TESTING TO NOT UPDATE THE SOURCE FILE
+                                filename_out = filename + "_OUT.XML"
+                                with open(filename_out, "w", encoding="iso-8859-15") as fh:
+                                    fh.write("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n")
+                                    fh.write("<!-- Informatica proprietary -->\n")
+                                    fh.write("<!DOCTYPE POWERMART SYSTEM \"powrmart.dtd\">\n")
+                                    fh.write(ET.tostring(root).decode("iso-8859-15"))
                                     
                                     #tree = ET.ElementTree(root)
                                     #tree.write(filename, encoding="iso-8859-15", xml_declaration=True)
