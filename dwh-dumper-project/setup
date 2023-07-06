@@ -5,6 +5,8 @@ gsutil -m cp -r gs://teradata_metadata/informatica/dev/* xml_metadata/
 
 mkdir teradata_metadata_extract
 
+#copy the metadata extracted from Teradata (using dwh-dumper supplied by GCP)
+
 gsutil cp gs://teradata_metadata/teradata/dev/dwh-dumper-extract/dwh-migration-teradata-metadata.zip teradata_metadata_extract/
 
 cd (the path you want to have the dwh dumper reopository cloned to)
@@ -21,7 +23,7 @@ https://github.com/maciejsicinski/xml_parser/blob/main/sql_query_casing_parser.p
 folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata"
 
 # Output directory path
-output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract"
+output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/td"
 
 #run the parser 
 python sql_query_casing_parser.py
@@ -34,9 +36,13 @@ python sql_query_casing_parser.py
 
 mkdir teradata_transalator
 
+#copy the client libraries into the folder of choice
+
 cp -R /Users/MaciejSicinski/dwh-migration-tools/client/examples/teradata/sql teradata_transalator
 
 cd teradata_transalator
+
+#create a python virtual environment and install the batch translation client
 
 python3 -m venv venv
 source venv/bin/activate
@@ -44,19 +50,27 @@ pip install /Users/MaciejSicinski/dwh-migration-tools/client
 
 cd sql
 
+#remove sample input files
+
 rm -rf input/*
 
 #copy exported sql queries into input folders
 
-find /Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract -type f -exec rsync -av --progress {} input/ \;
+find /Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/td -type f -exec rsync -av --progress {} input/ \;
+
+#set up environmental variables
 
 export BQMS_VERBOSE="False"
 export BQMS_MULTITHREADED="True"
 export BQMS_PROJECT="gcp-ch-d-prj-i-edp"
 export BQMS_GCS_BUCKET="translation_gcp_api/dev"
 
+#change default database to Dev_Stg
+
 cd config
 
 vim config.yaml
 
-#change default databse to Dev_Stg
+#Set default application login (service account with read/write permissions to the GCP bucket and bigquerymigration role)
+
+gcloud auth application-default login

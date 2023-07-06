@@ -15,16 +15,9 @@ os.makedirs(output_dir_path, exist_ok=True)
 
 def updateConnectorFrom(mapping, transformation_name, name_from, name_to):
     for connector in mapping.iter("CONNECTOR"):
-        print(connector.attrib["FROMINSTANCE"])
-        print(transformation_name)
-        print(connector.attrib["FROMFIELD"] )
-        print(name_from)
         if connector.attrib["FROMINSTANCE"] == transformation_name and connector.attrib["FROMFIELD"] == name_from:
-            print (connector.attrib["FROMINSTANCE"])
-            print(connector.attrib["FROMFIELD"])
-            print(name_from)
-            print(connector.attrib["FROMFIELD"])
             connector.attrib["FROMFIELD"] = name_to
+            #For the testing purposes print the changed port name
             print(connector.attrib["FROMFIELD"])
 
 def updateConnectorTo(mapping, transformation_name, name_from, name_to):
@@ -89,7 +82,7 @@ def getValue(node, names):
     return res
 
 def process_file(filename):
-    with open(filename, "r", encoding="iso-8859-15") as fh:
+    with open(filename, "r", encoding="iso-8859-1") as fh:
         doc = ET.parse(fh)
         root = doc.getroot()
         for folder in root.iter("FOLDER"):
@@ -107,21 +100,13 @@ def process_file(filename):
                     if ttype == "Source Qualifier" and val is not None and len(val) > 0:                      
                         port_names = []
                         field_nodes = list(sq.iter("TRANSFORMFIELD"))
-                        print(folder_name)
-                        print(mapping_name)
-                        print(transformation_name)
                         for field in field_nodes:
-                                print (field.attrib["NAME"])
                         #Only manipulate ports if they are connected (port is used further down the mapping)
                                 if field.attrib["NAME"] in connected_from:
                                     port_names.append(field.attrib["NAME"])
-                        print (port_names)
-                        print (connected_from)
-                        print (connected_to)
                         #port_names = [item.lower() for item in port_names]
                         sql_columns = []
                         sql_columns = find_columns(val)
-                        print(sql_columns)
                             # HERE ADD EMPTY ALIASES HANDLING
                             #sql_columns= [item.lower() for item in sql_columns]
                             # Don't update if the SQL parser returned an error
@@ -134,45 +119,24 @@ def process_file(filename):
                             # Update NAME attribute values
                             for i, field in enumerate(sq.iter("TRANSFORMFIELD")):                           
                                 if i < len(sql_columns):
-                                    print("i < len sql")
-                                    print (sql_columns[i])
-                                    print(field.attrib["NAME"])
                                     if sql_columns[i] != field.attrib["NAME"]:
-                                        print("rozne")
                                         updateConnectorFrom(child, transformation_name, field.attrib["NAME"], sql_columns[i]) 
                                         updateConnectorTo(child, transformation_name, field.attrib["NAME"], sql_columns[i]) 
                                         field.attrib["NAME"] = sql_columns[i] 
-                                        print("calling functions")
-
-                                    print(field.attrib["NAME"])
-                                 
                                 # HERE ADD NAME CONFLICT RESOLUTION
                             # Update XML file with modified values
 
-                                # HERE ADD XML FORMATTING/ENCODING/ETC to fit the source file format COMMENTED OUT FOR TESTING TO NOT UPDATE THE SOURCE FILE
                                 filename_out = filename + "_OUT.XML"
-                                with open(filename_out, "w", encoding="iso-8859-15") as fh:
+                                with open(filename_out, "w", encoding="iso-8859-1") as fh:
+                                    #Write informatica header into a file
                                     fh.write("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n")
                                     fh.write("<!-- Informatica proprietary -->\n")
                                     fh.write("<!DOCTYPE POWERMART SYSTEM \"powrmart.dtd\">\n")
-                                    fh.write(ET.tostring(root).decode("iso-8859-15"))
+                                    fh.write(ET.tostring(root).decode("iso-8859-1"))
                                     
-                                    #tree = ET.ElementTree(root)
-                                    #tree.write(filename, encoding="iso-8859-15", xml_declaration=True)
-
-                                    # Update XML file with modified values
-                                    #with open(filename, "r", encoding="iso-8859-15") as file:
-                                    #    xml_content = file.read()
-
-                                   # xml_content = re.sub(r'<TRANSFORMATION .*?</TRANSFORMATION>', ET.tostring(sq).decode("iso-8859-15"), xml_content, flags=re.DOTALL)
-
-                                    #with open(filename, "w", encoding="iso-8859-15") as file:
-                                     #   file.write(xml_content)
-
 # Process each file in the folder
 for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
-        #print(filename)
         file_path = os.path.join(folder_path, filename)
         process_file(file_path)
 

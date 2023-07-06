@@ -60,7 +60,7 @@ def process_file(filename, output_dir):
 folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata"
 
 # Output directory path
-output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract"
+output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/td"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
