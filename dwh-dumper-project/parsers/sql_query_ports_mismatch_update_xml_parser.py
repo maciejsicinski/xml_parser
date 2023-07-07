@@ -12,6 +12,18 @@ output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extr
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
 
+def updateConflictingPortNames(mapping, transformation_name, new_port):
+    for transformation in mapping.iter("TRANSFORMATION"):
+        if transformation.attrib["NAME"] == transformation_name:
+            for index, port in enumerate(transformation.iter("TRANSFORMFIELD")):
+                if new_port == port.attrib["NAME"]:
+                    print("new_port_name")
+                    print(port.attrib["NAME"] + "_" + str(index))
+                    port.attrib["NAME"] = port.attrib["NAME"] + "_" + str(index)
+                    updateConnectorFrom(mapping, transformation_name, new_port, port.attrib["NAME"])
+                    updateConnectorTo(mapping, transformation_name, new_port, port.attrib["NAME"])
+
+
 def updateConnectorFrom(mapping, transformation_name, name_from, name_to):
     for connector in mapping.iter("CONNECTOR"):
         if connector.attrib["FROMINSTANCE"] == transformation_name and connector.attrib["FROMFIELD"] == name_from:
@@ -113,12 +125,13 @@ def process_file(filename):
                             continue
                         else:
                             # Don't update if both lists contains the same values (lowercased) 
-                            if [item.lower() for item in port_names] == [item.lower() for item in sql_columns]:
-                                continue
+                            #if [item.lower() for item in port_names] == [item.lower() for item in sql_columns]:
+                            #    continue
                             # Update NAME attribute values
                             for i, field in enumerate(sq.iter("TRANSFORMFIELD")):                           
                                 if i < len(sql_columns):
                                     if sql_columns[i] != field.attrib["NAME"]:
+                                        updateConflictingPortNames(child, transformation_name, sql_columns[i])
                                         updateConnectorFrom(child, transformation_name, field.attrib["NAME"], sql_columns[i]) 
                                         updateConnectorTo(child, transformation_name, field.attrib["NAME"], sql_columns[i]) 
                                         field.attrib["NAME"] = sql_columns[i] 
