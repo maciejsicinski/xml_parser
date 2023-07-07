@@ -1,8 +1,7 @@
 import os
 import xml.etree.ElementTree as ET
 import sqlglot
-import sqlglot.expressions as exp
-from sqlglot import parse_one, exp
+from sqlglot import exp
 
 # Folder path to scan
 folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata_test"
@@ -113,8 +112,8 @@ def process_file(filename):
                         if sql_columns == ["parse_error"]:
                             continue
                         else:
-                            # Don't update if both lists contains the same values TO ADD: it only holds true if all ports are connected!!    
-                            if port_names == sql_columns:
+                            # Don't update if both lists contains the same values (lowercased) 
+                            if [item.lower() for item in port_names] == [item.lower() for item in sql_columns]:
                                 continue
                             # Update NAME attribute values
                             for i, field in enumerate(sq.iter("TRANSFORMFIELD")):                           

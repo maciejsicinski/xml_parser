@@ -1,13 +1,15 @@
 
 mkdir xml_metadata
 
+#XML files containing mappings metadata
+
 gsutil -m cp -r gs://teradata_metadata/informatica/dev/* xml_metadata/
 
 mkdir teradata_metadata_extract
 
 #copy the metadata extracted from Teradata (using dwh-dumper supplied by GCP)
 
-gsutil cp gs://teradata_metadata/teradata/dev/dwh-dumper-extract/dwh-migration-teradata-metadata.zip teradata_metadata_extract/
+gsutil cp gs://teradata_metadata/teradata/dev/dwh-dumper-extract/dwh-migration-teradata-metadata.zip input/
 
 cd (the path you want to have the dwh dumper reopository cloned to)
 
@@ -40,15 +42,13 @@ mkdir teradata_transalator
 
 cp -R /Users/MaciejSicinski/dwh-migration-tools/client/examples/teradata/sql teradata_transalator
 
-cd teradata_transalator
+cd teradata_transalator/sql
 
 #create a python virtual environment and install the batch translation client
 
 python3 -m venv venv
 source venv/bin/activate
 pip install /Users/MaciejSicinski/dwh-migration-tools/client
-
-cd sql
 
 #remove sample input files
 
@@ -74,3 +74,7 @@ vim config.yaml
 #Set default application login (service account with read/write permissions to the GCP bucket and bigquerymigration role)
 
 gcloud auth application-default login
+
+#run the executable
+
+./run.sh
