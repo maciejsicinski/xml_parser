@@ -29,7 +29,7 @@ def updateConnectorFrom(mapping, transformation_name, name_from, name_to):
         if connector.attrib["FROMINSTANCE"] == transformation_name and connector.attrib["FROMFIELD"] == name_from:
             connector.attrib["FROMFIELD"] = name_to
             #For the testing purposes print the changed port name
-            print(connector.attrib["FROMFIELD"])
+            #print(connector.attrib["FROMFIELD"])
 
 def updateConnectorTo(mapping, transformation_name, name_from, name_to):
     for connector in mapping.iter("CONNECTOR"):
@@ -115,6 +115,8 @@ def process_file(filename):
                         #Only manipulate ports if they are connected (port is used further down the mapping)
                                 if field.attrib["NAME"] in connected_from:
                                     port_names.append(field.attrib["NAME"])
+                        print("connected_ports:")
+                        print(port_names)
                         #port_names = [item.lower() for item in port_names]
                         sql_columns = []
                         sql_columns = find_columns(val)
@@ -129,8 +131,12 @@ def process_file(filename):
                             #    continue
                             # Update NAME attribute values
                             for i, field in enumerate(sq.iter("TRANSFORMFIELD")):                           
-                                if i < len(sql_columns):
+                                if i < len(sql_columns) and field.attrib["NAME"] in port_names:
                                     if sql_columns[i] != field.attrib["NAME"]:
+                                        print("name of the column from sql")
+                                        print(sql_columns[i])
+                                        print("name of attribute")
+                                        print(field.attrib["NAME"])
                                         updateConflictingPortNames(child, transformation_name, sql_columns[i])
                                         updateConnectorFrom(child, transformation_name, field.attrib["NAME"], sql_columns[i]) 
                                         updateConnectorTo(child, transformation_name, field.attrib["NAME"], sql_columns[i]) 
