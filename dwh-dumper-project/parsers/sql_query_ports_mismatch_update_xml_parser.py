@@ -120,6 +120,7 @@ def process_file(filename):
                         #port_names = [item.lower() for item in port_names]
                         sql_columns = []
                         sql_columns = find_columns(val)
+                        print(sql_columns)
                             # HERE ADD EMPTY ALIASES HANDLING
                             #sql_columns= [item.lower() for item in sql_columns]
                             # Don't update if the SQL parser returned an error
@@ -130,18 +131,31 @@ def process_file(filename):
                             #if [item.lower() for item in port_names] == [item.lower() for item in sql_columns]:
                             #    continue
                             # Update NAME attribute values
-                            for i, field in enumerate(sq.iter("TRANSFORMFIELD")):                           
+                            i = 0
+                            for field in sq.iter("TRANSFORMFIELD"):                           
                                 if i < len(sql_columns) and field.attrib["NAME"] in port_names:
                                     if sql_columns[i] != field.attrib["NAME"]:
                                         print("name of the column from sql")
                                         print(sql_columns[i])
                                         print("name of attribute")
                                         print(field.attrib["NAME"])
-                                        updateConflictingPortNames(child, transformation_name, sql_columns[i])
-                                        updateConnectorFrom(child, transformation_name, field.attrib["NAME"], sql_columns[i]) 
-                                        updateConnectorTo(child, transformation_name, field.attrib["NAME"], sql_columns[i]) 
+                                        current = field.attrib["NAME"]
+                                        next = sql_columns[i]
+                                        updateConnectorFrom(child, transformation_name, current, next) 
+                                        updateConnectorTo(child, transformation_name, current, next) 
                                         field.attrib["NAME"] = sql_columns[i] 
+
+                                        #updateConflictingPortNames(child, transformation_name, next)
+                                    i+=1
                                 # HERE ADD NAME CONFLICT RESOLUTION
+                            for i, field_o in enumerate(sq.iter("TRANSFORMFIELD")):
+                                for j, field_i in enumerate(sq.iter("TRANSFORMFIELD")):
+                                    if i != j and field_o.attrib["NAME"] == field_i.attrib["NAME"]:
+                                        current = field_o.attrib["NAME"] 
+                                        next = field_o.attrib["NAME"] + "__" + str(j)
+                                        field_o.attrib["NAME"] = next
+                                        updateConnectorFrom(child, transformation_name, current, next) 
+                                        updateConnectorTo(child, transformation_name, current, next) 
                             # Update XML file with modified values
 
                                 filename_out = filename + "_OUT.XML"
