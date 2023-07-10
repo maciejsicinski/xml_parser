@@ -18,8 +18,8 @@ def updateConflictingPortNames(mapping, transformation_name, new_port):
             for index, port in enumerate(transformation.iter("TRANSFORMFIELD")):
                 if new_port == port.attrib["NAME"]:
                     print("new_port_name")
-                    print(port.attrib["NAME"] + "_" + str(index))
-                    port.attrib["NAME"] = port.attrib["NAME"] + "_" + str(index)
+                    print(port.attrib["NAME"] + "__" + str(index))
+                    port.attrib["NAME"] = port.attrib["NAME"] + "__" + str(index)
                     updateConnectorFrom(mapping, transformation_name, new_port, port.attrib["NAME"])
                     updateConnectorTo(mapping, transformation_name, new_port, port.attrib["NAME"])
 
