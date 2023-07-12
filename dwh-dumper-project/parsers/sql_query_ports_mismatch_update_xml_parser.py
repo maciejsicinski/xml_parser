@@ -29,7 +29,7 @@ def updateConnectors(mapping, transformation_name, map):
                 print(f"old name: {old}, new name: {new}")
                 connector.attrib["TOFIELD"] = map[connector.attrib["TOFIELD"]]['to']
 
-def updateConflictingPortNames(mapping, transformation_name, old_port, new_port):
+def updateConflictingPortNames(mapping, transformation_name, old_port, new_port, port_names):
     updated_ports = []
     conflict_update = {}
     for transformation in mapping.iter("TRANSFORMATION"):
@@ -37,13 +37,14 @@ def updateConflictingPortNames(mapping, transformation_name, old_port, new_port)
             for index, port in enumerate(transformation.iter("TRANSFORMFIELD")):
                 if new_port == port.attrib["NAME"]:
                     updated_name = port.attrib["NAME"] + "__" + str(index)
-                    updated_ports.append(updated_name)
+                    if port.attrib["NAME"] in port_names:
+                        updated_ports.append(updated_name)
                     conflict_update [updated_name] = {
                         "original" : new_port
                     }
                     port.attrib["NAME"] = updated_name
-                    #print("new field dict inside")
-                    #print(field_dict)
+                    print("new field dict inside")
+                    print(conflict_update)
                     #updateConnectorFrom(mapping, transformation_name, new_port, updated_name) 
                     #updateConnectorTo(mapping, transformation_name, new_port, updated_name) 
     return updated_ports, conflict_update
@@ -166,7 +167,7 @@ def process_file(filename):
                                         }
                                         current = field.attrib["NAME"]
                                         next = sql_columns[i]
-                                        updated_ports, conflict_update_tmp = updateConflictingPortNames(child, transformation_name, field.attrib["NAME"], next)
+                                        updated_ports, conflict_update_tmp = updateConflictingPortNames(child, transformation_name, field.attrib["NAME"], next, port_names)
                                         if (conflict_update_tmp):
                                             conflict_update.update(conflict_update_tmp)
                                         for item in updated_ports:
@@ -186,6 +187,13 @@ def process_file(filename):
                                         field_dict_2[original_key]['from'] = original_key
                                     else:
                                         field_dict_2[key] = value
+                                for key, value in conflict_update.items():
+                                    if key not in field_dict.keys() :
+                                        print(f"missoing:  {key}, {value}")
+                                        field_dict_2 [conflict_update[key]['original']]= {  
+                                        "from": conflict_update[key]['original'],
+                                         "to" : key
+                                        }
                             print(f"original dict: {field_dict}")    
                             print(f"changes due to conflicts: {conflict_update}")
                             print(f"adjusted dict: {field_dict_2}")    
