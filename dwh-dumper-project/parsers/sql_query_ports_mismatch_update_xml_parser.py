@@ -12,6 +12,23 @@ output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extr
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
 
+def updateConnectors(mapping, transformation_name, map):
+    for connector in mapping.iter("CONNECTOR"):
+        if connector.attrib["FROMINSTANCE"] == transformation_name and connector.attrib["FROMFIELD"] in map.keys():
+            old = connector.attrib["FROMFIELD"] 
+            new = map[connector.attrib["FROMFIELD"]]['to']
+            if old != new:
+                print("changing connector from")
+                print(f"old name: {old}, new name: {new}")
+                connector.attrib["FROMFIELD"] = map[connector.attrib["FROMFIELD"]]['to']
+        elif connector.attrib["TOINSTANCE"] == transformation_name and connector.attrib["TOFIELD"] in map.keys():
+            old = connector.attrib["TOFIELD"] 
+            new = map[connector.attrib["TOFIELD"]]['to']
+            if old != new:
+                print("changing connector to")
+                print(f"old name: {old}, new name: {new}")
+                connector.attrib["TOFIELD"] = map[connector.attrib["TOFIELD"]]['to']
+
 def updateConflictingPortNames(mapping, transformation_name, old_port, new_port):
     updated_ports = []
     conflict_update = {}
@@ -101,8 +118,6 @@ def getValue(node, names):
     return res
 
 def process_file(filename):
-    field_dict = {} 
-    conflict_update = {}
     with open(filename, "r", encoding="iso-8859-1") as fh:
         doc = ET.parse(fh)
         root = doc.getroot()
@@ -111,6 +126,8 @@ def process_file(filename):
             for child in folder.iter("MAPPING"):
                 mapping_name = child.attrib["NAME"]
                 for sq in child.iter("TRANSFORMATION"):
+                    field_dict = {} 
+                    conflict_update = {}
                     ttype = sq.attrib["TYPE"]
                     transformation_name = sq.attrib["NAME"]
                     connected_from = getConnectedFrom(child, transformation_name)
@@ -155,20 +172,11 @@ def process_file(filename):
                                         for item in updated_ports:
                                             port_names.append(item)
                                         print(conflict_update)                           
-                                        #for key, item in conflict_update.items():
-                                            #if key in field_dict:
-                                               # print(field_dict[conflict_update[item]])
-                                               # print(conflict_update[conflict_update[item]])
-                                        #print(field_dict)
-                                        #print(field_dict_add)
-                                        #field_dict.update(conflict_update)
                                         #updateConnectorFrom(child, transformation_name, current, next) 
                                         #updateConnectorTo(child, transformation_name, current, next) 
                                         field.attrib["NAME"] = sql_columns[i] 
                                         #updateConflictingPortNames(child, transformation_name, next)
                                     i+=1
-                            print(field_dict)    
-                            print(conflict_update)
                             field_dict_2 = {}
                             if(conflict_update):
                                 for key, value in field_dict.items():
@@ -178,9 +186,10 @@ def process_file(filename):
                                         field_dict_2[original_key]['from'] = original_key
                                     else:
                                         field_dict_2[key] = value
-                            print(field_dict)    
-                            print(field_dict_2)    
-                            print(conflict_update)
+                            print(f"original dict: {field_dict}")    
+                            print(f"changes due to conflicts: {conflict_update}")
+                            print(f"adjusted dict: {field_dict_2}")    
+                            updateConnectors(child, transformation_name, field_dict_2)
  
                             # Update XML file with modified values
 
