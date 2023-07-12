@@ -12,29 +12,37 @@ output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extr
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
 
-def updateConflictingPortNames(mapping, transformation_name, new_port):
+def updateConflictingPortNames(mapping, transformation_name, old_port, new_port):
+    updated_ports = []
+    conflict_update = {}
     for transformation in mapping.iter("TRANSFORMATION"):
         if transformation.attrib["NAME"] == transformation_name:
             for index, port in enumerate(transformation.iter("TRANSFORMFIELD")):
                 if new_port == port.attrib["NAME"]:
-                    print("new_port_name")
-                    print(port.attrib["NAME"] + "__" + str(index))
-                    port.attrib["NAME"] = port.attrib["NAME"] + "__" + str(index)
-                    updateConnectorFrom(mapping, transformation_name, new_port, port.attrib["NAME"])
-                    updateConnectorTo(mapping, transformation_name, new_port, port.attrib["NAME"])
-
+                    updated_name = port.attrib["NAME"] + "__" + str(index)
+                    updated_ports.append(updated_name)
+                    conflict_update [updated_name] = {
+                        "original" : new_port
+                    }
+                    port.attrib["NAME"] = updated_name
+                    #print("new field dict inside")
+                    #print(field_dict)
+                    #updateConnectorFrom(mapping, transformation_name, new_port, updated_name) 
+                    #updateConnectorTo(mapping, transformation_name, new_port, updated_name) 
+    return updated_ports, conflict_update
 
 def updateConnectorFrom(mapping, transformation_name, name_from, name_to):
     for connector in mapping.iter("CONNECTOR"):
         if connector.attrib["FROMINSTANCE"] == transformation_name and connector.attrib["FROMFIELD"] == name_from:
             connector.attrib["FROMFIELD"] = name_to
             #For the testing purposes print the changed port name
-            #print(connector.attrib["FROMFIELD"])
+            print(ET.tostring(connector))
 
 def updateConnectorTo(mapping, transformation_name, name_from, name_to):
     for connector in mapping.iter("CONNECTOR"):
         if connector.attrib["TOINSTANCE"] == transformation_name and connector.attrib["TOFIELD"] == name_from:
             connector.attrib["TOFIELD"] = name_to
+            print(ET.tostring(connector))
 
 def getSqlQuery(transformation):
     sql_query =[]
@@ -93,6 +101,8 @@ def getValue(node, names):
     return res
 
 def process_file(filename):
+    field_dict = {} 
+    conflict_update = {}
     with open(filename, "r", encoding="iso-8859-1") as fh:
         doc = ET.parse(fh)
         root = doc.getroot()
@@ -115,12 +125,9 @@ def process_file(filename):
                         #Only manipulate ports if they are connected (port is used further down the mapping)
                                 if field.attrib["NAME"] in connected_from:
                                     port_names.append(field.attrib["NAME"])
-                        print("connected_ports:")
-                        print(port_names)
                         #port_names = [item.lower() for item in port_names]
                         sql_columns = []
                         sql_columns = find_columns(val)
-                        print(sql_columns)
                             # HERE ADD EMPTY ALIASES HANDLING
                             #sql_columns= [item.lower() for item in sql_columns]
                             # Don't update if the SQL parser returned an error
@@ -132,39 +139,58 @@ def process_file(filename):
                             #    continue
                             # Update NAME attribute values
                             i = 0
-                            for field in sq.iter("TRANSFORMFIELD"):                           
+                            for field in sq.iter("TRANSFORMFIELD"):
                                 if i < len(sql_columns) and field.attrib["NAME"] in port_names:
+                                    print(field.attrib["NAME"])
                                     if sql_columns[i] != field.attrib["NAME"]:
-                                        print("name of the column from sql")
-                                        print(sql_columns[i])
-                                        print("name of attribute")
-                                        print(field.attrib["NAME"])
+                                        field_dict [field.attrib["NAME"]]= {  
+                                        "from": field.attrib["NAME"],
+                                         "to" : sql_columns[i]
+                                        }
                                         current = field.attrib["NAME"]
                                         next = sql_columns[i]
-                                        updateConnectorFrom(child, transformation_name, current, next) 
-                                        updateConnectorTo(child, transformation_name, current, next) 
+                                        updated_ports, conflict_update_tmp = updateConflictingPortNames(child, transformation_name, field.attrib["NAME"], next)
+                                        if (conflict_update_tmp):
+                                            conflict_update.update(conflict_update_tmp)
+                                        for item in updated_ports:
+                                            port_names.append(item)
+                                        print(conflict_update)                           
+                                        #for key, item in conflict_update.items():
+                                            #if key in field_dict:
+                                               # print(field_dict[conflict_update[item]])
+                                               # print(conflict_update[conflict_update[item]])
+                                        #print(field_dict)
+                                        #print(field_dict_add)
+                                        #field_dict.update(conflict_update)
+                                        #updateConnectorFrom(child, transformation_name, current, next) 
+                                        #updateConnectorTo(child, transformation_name, current, next) 
                                         field.attrib["NAME"] = sql_columns[i] 
-
                                         #updateConflictingPortNames(child, transformation_name, next)
                                     i+=1
-                                # HERE ADD NAME CONFLICT RESOLUTION
-                            for i, field_o in enumerate(sq.iter("TRANSFORMFIELD")):
-                                for j, field_i in enumerate(sq.iter("TRANSFORMFIELD")):
-                                    if i != j and field_o.attrib["NAME"] == field_i.attrib["NAME"]:
-                                        current = field_o.attrib["NAME"] 
-                                        next = field_o.attrib["NAME"] + "__" + str(j)
-                                        field_o.attrib["NAME"] = next
-                                        updateConnectorFrom(child, transformation_name, current, next) 
-                                        updateConnectorTo(child, transformation_name, current, next) 
+                            print(field_dict)    
+                            print(conflict_update)
+                            field_dict_2 = {}
+                            if(conflict_update):
+                                for key, value in field_dict.items():
+                                    if key in conflict_update:
+                                        original_key = conflict_update[key]['original']
+                                        field_dict_2[original_key] = value
+                                        field_dict_2[original_key]['from'] = original_key
+                                    else:
+                                        field_dict_2[key] = value
+                            print(field_dict)    
+                            print(field_dict_2)    
+                            print(conflict_update)
+ 
                             # Update XML file with modified values
 
-                                filename_out = filename + "_OUT.XML"
-                                with open(filename_out, "w", encoding="iso-8859-1") as fh:
-                                    #Write informatica header into a file
-                                    fh.write("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n")
-                                    fh.write("<!-- Informatica proprietary -->\n")
-                                    fh.write("<!DOCTYPE POWERMART SYSTEM \"powrmart.dtd\">\n")
-                                    fh.write(ET.tostring(root).decode("iso-8859-1"))
+        filename_out = filename + "_OUT.XML"
+        with open(filename_out, "w", encoding="iso-8859-1") as fh:
+            #Write informatica header into a file
+            fh.write("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n")
+            fh.write("<!-- Informatica proprietary -->\n")
+            fh.write("<!DOCTYPE POWERMART SYSTEM \"powrmart.dtd\">\n")
+            fh.write(ET.tostring(root).decode("iso-8859-1"))
                                     
 # Process each file in the folder
 for filename in os.listdir(folder_path):
