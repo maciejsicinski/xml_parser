@@ -12,30 +12,23 @@ output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extr
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
 
-def replace_load_id_exp(transformation):
+def replaceLoadIdExp(transformation):
     if transformation.attrib["TYPE"] == "Expression":
         for field in transformation.iter("TRANSFORMFIELD"):
-            print(field)
             if field.attrib["EXPRESSION"] == "$$LOAD_ID":
-                print(field.attrib["EXPRESSION"])
                 field.attrib["EXPRESSION"] = "TO_DECIMAL($$LOAD_ID,5)"
-                print(field.attrib["EXPRESSION"])
 
 def updateConnectors(mapping, transformation_name, map):
     for connector in mapping.iter("CONNECTOR"):
         if connector.attrib["FROMINSTANCE"] == transformation_name and connector.attrib["FROMFIELD"] in map.keys():
-            old = connector.attrib["FROMFIELD"] 
+            old = connector.attrib["FROMFIELD"] #functionalize
             new = map[connector.attrib["FROMFIELD"]]['to']
             if old != new:
-                print("changing connector from")
-                print(f"old name: {old}, new name: {new}")
                 connector.attrib["FROMFIELD"] = map[connector.attrib["FROMFIELD"]]['to']
         elif connector.attrib["TOINSTANCE"] == transformation_name and connector.attrib["TOFIELD"] in map.keys():
-            old = connector.attrib["TOFIELD"] 
+            old = connector.attrib["TOFIELD"] #reuse function
             new = map[connector.attrib["TOFIELD"]]['to']
             if old != new:
-                print("changing connector to")
-                print(f"old name: {old}, new name: {new}")
                 connector.attrib["TOFIELD"] = map[connector.attrib["TOFIELD"]]['to']
 
 def updateConflictingPortNames(mapping, transformation_name, old_port, new_port, port_names):
@@ -58,24 +51,10 @@ def updateConflictingPortNames(mapping, transformation_name, old_port, new_port,
                     #updateConnectorTo(mapping, transformation_name, new_port, updated_name) 
     return updated_ports, conflict_update
 
-def updateConnectorFrom(mapping, transformation_name, name_from, name_to):
-    for connector in mapping.iter("CONNECTOR"):
-        if connector.attrib["FROMINSTANCE"] == transformation_name and connector.attrib["FROMFIELD"] == name_from:
-            connector.attrib["FROMFIELD"] = name_to
-            #For the testing purposes print the changed port name
-            print(ET.tostring(connector))
-
-def updateConnectorTo(mapping, transformation_name, name_from, name_to):
-    for connector in mapping.iter("CONNECTOR"):
-        if connector.attrib["TOINSTANCE"] == transformation_name and connector.attrib["TOFIELD"] == name_from:
-            connector.attrib["TOFIELD"] = name_to
-            print(ET.tostring(connector))
-
 def getSqlQuery(transformation):
-    sql_query =[]
     for ta in transformation.iter("TABLEATTRIBUTE"):
-        sql_query.append(getValue(ta, ["Sql Query"]))
-    return sql_query[0]
+        sql_query= ta.attrib["Sql Query"]
+    return sql_query
 
 def getConnectedFrom(mapping, transformation_name):
     connected_from = []
@@ -84,50 +63,16 @@ def getConnectedFrom(mapping, transformation_name):
             connected_from.append(connector.attrib["FROMFIELD"])
     return connected_from
 
-def getConnectedTo(mapping, transformation_name):
-    connected_from = []
-    for connector in mapping.iter("CONNECTOR"):
-        if connector.attrib["TOINSTANCE"] == transformation_name:
-            connected_from.append(connector.attrib["TOFIELD"])
-    return connected_from
-
-def find_columns(query):
+def findColumns(query):
     column_names = []
     try:
         for expression in sqlglot.parse_one(query).find(exp.Select).args["expressions"]:
             column_names.append(expression.alias_or_name)
     except Exception as e:
-        return ["parse_error"]
+        return ["parse_error"] #try to print the error
     return column_names
 
-def findNode(node, nodename):
-    res = None
-    for child in node:
-        if child.tag == nodename:
-            res = child
-        else:
-            if len(child) > 0:
-                res = findNode(child, nodename)
-        if res is not None:
-            break
-    return res
-
-def findNodes(node, nodename, res):
-    for child in node:
-        if child.tag == nodename:
-            res.append(child)
-        else:
-            if len(child) > 0:
-                findNodes(child, nodename, res)
-
-def getValue(node, names):
-    res = None
-    aname = node.attrib["NAME"]
-    if aname in names:
-        res = node.attrib["VALUE"]
-    return res
-
-def process_file(filename):
+def processFile(filename):
     with open(filename, "r", encoding="iso-8859-1") as fh:
         doc = ET.parse(fh)
         root = doc.getroot()
@@ -137,17 +82,16 @@ def process_file(filename):
                 mapping_name = child.attrib["NAME"]
                 for sq in child.iter("TRANSFORMATION"):
                     #replace $$LOAD_ID with the converted version TO_DECIMAL($$LOAD_ID,5)               
-                    replace_load_id_exp(sq)
+                    replaceLoadIdExp(sq)
                     field_dict = {} 
                     conflict_update = {}
                     ttype = sq.attrib["TYPE"]
                     transformation_name = sq.attrib["NAME"]
                     connected_from = getConnectedFrom(child, transformation_name)
-                    connected_to = getConnectedTo(child, transformation_name)
                     # For each transformation get only Sql Query attribute to parse and save columns returned by a SQL query   
-                    val = getSqlQuery(sq)
+                    query = getSqlQuery(sq)
                     # For each transformation in each mapping get only Source Qualifier transformation and save it's port
-                    if ttype == "Source Qualifier" and val is not None and len(val) > 0:                      
+                    if ttype == "Source Qualifier" and query is not None and len(query) > 0:                      
                         port_names = []
                         field_nodes = list(sq.iter("TRANSFORMFIELD"))
                         for field in field_nodes:
@@ -155,12 +99,12 @@ def process_file(filename):
                                 if field.attrib["NAME"] in connected_from:
                                     port_names.append(field.attrib["NAME"])
                         #port_names = [item.lower() for item in port_names]
-                        sql_columns = []
-                        sql_columns = find_columns(val)
+                        sql_columns = findColumns(query)
                             # HERE ADD EMPTY ALIASES HANDLING
                             #sql_columns= [item.lower() for item in sql_columns]
                             # Don't update if the SQL parser returned an error
                         if sql_columns == ["parse_error"]:
+                            #create file with the mapping.sq so we know where the error occured
                             continue
                         else:
                             # Don't update if both lists contains the same values (lowercased) 
@@ -171,23 +115,24 @@ def process_file(filename):
                             for field in sq.iter("TRANSFORMFIELD"):
                                 if i < len(sql_columns) and field.attrib["NAME"] in port_names:
                                     print(field.attrib["NAME"])
-                                    if sql_columns[i] != field.attrib["NAME"]:
-                                        field_dict [field.attrib["NAME"]]= {  
+                                    if sql_columns[i].lower() != field.attrib["NAME"].lower():    
+                                        field_dict[field.attrib["NAME"]]= {  
                                         "from": field.attrib["NAME"],
                                          "to" : sql_columns[i]
                                         }
-                                        current = field.attrib["NAME"]
                                         next = sql_columns[i]
-                                        updated_ports, conflict_update_tmp = updateConflictingPortNames(child, transformation_name, field.attrib["NAME"], next, port_names)
-                                        if (conflict_update_tmp):
+                                        updated_ports, conflict_update_tmp = updateConflictingPortNames(
+                                            mapping=child,
+                                            transformation_name=transformation_name,
+                                            old_port=field.attrib["NAME"],
+                                            new_port=next,
+                                            port_names = port_names
+                                        )
+                                        if conflict_update_tmp:
                                             conflict_update.update(conflict_update_tmp)
                                         for item in updated_ports:
                                             port_names.append(item)
-                                        print(conflict_update)                           
-                                        #updateConnectorFrom(child, transformation_name, current, next) 
-                                        #updateConnectorTo(child, transformation_name, current, next) 
                                         field.attrib["NAME"] = sql_columns[i] 
-                                        #updateConflictingPortNames(child, transformation_name, next)
                                     i+=1
                             field_dict_2 = {}
                             if(conflict_update):
@@ -200,14 +145,10 @@ def process_file(filename):
                                         field_dict_2[key] = value
                                 for key, value in conflict_update.items():
                                     if key not in field_dict.keys() :
-                                        print(f"missoing:  {key}, {value}")
                                         field_dict_2 [conflict_update[key]['original']]= {  
                                         "from": conflict_update[key]['original'],
                                          "to" : key
                                         }
-                            print(f"original dict: {field_dict}")    
-                            print(f"changes due to conflicts: {conflict_update}")
-                            print(f"adjusted dict: {field_dict_2}")    
                             updateConnectors(child, transformation_name, field_dict_2)
  
         # Update XML file with modified values
@@ -223,5 +164,5 @@ def process_file(filename):
 for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
         file_path = os.path.join(folder_path, filename)
-        process_file(file_path)
+        processFile(file_path)
 
