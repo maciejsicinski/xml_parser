@@ -12,6 +12,15 @@ output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extr
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
 
+def replace_load_id_exp(transformation):
+    if transformation.attrib["TYPE"] == "Expression":
+        for field in transformation.iter("TRANSFORMFIELD"):
+            print(field)
+            if field.attrib["EXPRESSION"] == "$$LOAD_ID":
+                print(field.attrib["EXPRESSION"])
+                field.attrib["EXPRESSION"] = "TO_DECIMAL($$LOAD_ID,5)"
+                print(field.attrib["EXPRESSION"])
+
 def updateConnectors(mapping, transformation_name, map):
     for connector in mapping.iter("CONNECTOR"):
         if connector.attrib["FROMINSTANCE"] == transformation_name and connector.attrib["FROMFIELD"] in map.keys():
@@ -127,6 +136,8 @@ def process_file(filename):
             for child in folder.iter("MAPPING"):
                 mapping_name = child.attrib["NAME"]
                 for sq in child.iter("TRANSFORMATION"):
+                    #replace $$LOAD_ID with the converted version TO_DECIMAL($$LOAD_ID,5)               
+                    replace_load_id_exp(sq)
                     field_dict = {} 
                     conflict_update = {}
                     ttype = sq.attrib["TYPE"]
@@ -199,8 +210,7 @@ def process_file(filename):
                             print(f"adjusted dict: {field_dict_2}")    
                             updateConnectors(child, transformation_name, field_dict_2)
  
-                            # Update XML file with modified values
-
+        # Update XML file with modified values
         filename_out = filename + "_OUT.XML"
         with open(filename_out, "w", encoding="iso-8859-1") as fh:
             #Write informatica header into a file
