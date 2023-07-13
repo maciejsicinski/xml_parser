@@ -7,10 +7,19 @@ from sqlglot import exp
 folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata_test"
 
 # Output directory path
-output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/columns_test"
+output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/teradata_based_queries"
+errors_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/errors"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
+os.makedirs(errors_dir_path, exist_ok=True)
+
+def saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, output_path, query):
+    output_file_name = f"{folder_name}#{mapping_name}#{transformation_name}#{ttype}.sql"
+    output_file_name = output_file_name.replace(" ", "")
+    output_file_path = os.path.join(output_path, output_file_name)
+    with open(output_file_path, "w") as output_file:
+        output_file.write(query + "\n")
 
 def replaceLoadIdExp(transformation):
     if transformation.attrib["TYPE"] == "Expression":
@@ -45,15 +54,12 @@ def updateConflictingPortNames(mapping, transformation_name, old_port, new_port,
                         "original" : new_port
                     }
                     port.attrib["NAME"] = updated_name
-                    print("new field dict inside")
-                    print(conflict_update)
-                    #updateConnectorFrom(mapping, transformation_name, new_port, updated_name) 
-                    #updateConnectorTo(mapping, transformation_name, new_port, updated_name) 
     return updated_ports, conflict_update
 
 def getSqlQuery(transformation):
     for ta in transformation.iter("TABLEATTRIBUTE"):
-        sql_query= ta.attrib["Sql Query"]
+        if ta.attrib["NAME"] == "Sql Query":
+            sql_query= ta.attrib["VALUE"]
     return sql_query
 
 def getConnectedFrom(mapping, transformation_name):
@@ -88,8 +94,9 @@ def processFile(filename):
                     ttype = sq.attrib["TYPE"]
                     transformation_name = sq.attrib["NAME"]
                     connected_from = getConnectedFrom(child, transformation_name)
+                    if ttype == "Source Qualifier":
+                        query = getSqlQuery(sq)
                     # For each transformation get only Sql Query attribute to parse and save columns returned by a SQL query   
-                    query = getSqlQuery(sq)
                     # For each transformation in each mapping get only Source Qualifier transformation and save it's port
                     if ttype == "Source Qualifier" and query is not None and len(query) > 0:                      
                         port_names = []
@@ -105,16 +112,17 @@ def processFile(filename):
                             # Don't update if the SQL parser returned an error
                         if sql_columns == ["parse_error"]:
                             #create file with the mapping.sq so we know where the error occured
+                            saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, errors_dir_path, query)
                             continue
                         else:
                             # Don't update if both lists contains the same values (lowercased) 
                             #if [item.lower() for item in port_names] == [item.lower() for item in sql_columns]:
                             #    continue
                             # Update NAME attribute values
+                            saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, output_dir_path, query)
                             i = 0
                             for field in sq.iter("TRANSFORMFIELD"):
                                 if i < len(sql_columns) and field.attrib["NAME"] in port_names:
-                                    print(field.attrib["NAME"])
                                     if sql_columns[i].lower() != field.attrib["NAME"].lower():    
                                         field_dict[field.attrib["NAME"]]= {  
                                         "from": field.attrib["NAME"],
