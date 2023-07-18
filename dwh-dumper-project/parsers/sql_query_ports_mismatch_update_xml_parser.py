@@ -2,20 +2,24 @@ import os
 import xml.etree.ElementTree as ET
 import sqlglot
 from sqlglot import exp
+from sqlglot.dialects.bigquery import BigQuery
+from sqlglot.dialects.teradata import Teradata
 
 # Folder path to scan
-folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata_test"
+folder_path = "../xml_metadata"
+teradata_metadata_path = "../teradata_metadata_extract"
 
 # Output directory path
-output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/teradata_based_queries"
-errors_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/errors"
-
-translated_folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/bq_based_queries"
+translated_folder_path = "../sql_extract/bq_based_queries"
+output_dir_path = "../sql_extract/teradata_based_queries"
+errors_dir_path = "../sql_extract/errors"
+xml_output_dir = "../xml_metadata_out"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
 os.makedirs(errors_dir_path, exist_ok=True)
 os.makedirs(translated_folder_path, exist_ok=True)
+os.makedirs(xml_output_dir, exist_ok=True)
 
 def bulkTranslate():
     """
@@ -84,7 +88,8 @@ def replaceLoadIdExp(transformation):
     """
     if transformation.attrib["TYPE"] == "Expression":
         for field in transformation.iter("TRANSFORMFIELD"):
-            if field.attrib["EXPRESSION"] == "$$LOAD_ID":
+            expression = field.get("EXPRESSION")
+            if expression is not None and expression == "$$LOAD_ID":
                 field.attrib["EXPRESSION"] = "TO_DECIMAL($$LOAD_ID,5)"
 
 def updateConnectors(mapping, transformation_name, map):
@@ -239,7 +244,7 @@ def findColumns(query):
     """
     column_names = []
     try:
-        for expression in sqlglot.parse_one(query).find(exp.Select).args["expressions"]:
+        for expression in sqlglot.parse(query, Teradata)[0].find(exp.Select).args["expressions"]:
             column_names.append(expression.alias_or_name)
     except Exception as e:
         return ["parse_error"] #try to print the error
@@ -248,8 +253,6 @@ def findColumns(query):
 def extractQueries(filename):
     """
     Retrieves, returns and save a sql query to a file.
-
-
 
     Parameters
     ----------
@@ -334,7 +337,7 @@ def processFile(filename):
             folder_name = folder.attrib["NAME"]
             for child in folder.iter("MAPPING"):
                 mapping_name = child.attrib["NAME"]
-                for sq in child.iter("TRANSFORMATION"):                         
+                for sq in child.iter("TRANSFORMATION"):                  
                     replaceLoadIdExp(sq)
                     field_dict = {} 
                     conflict_update = {}
@@ -345,7 +348,8 @@ def processFile(filename):
                         query = getSqlQuery(sq)
                     if ttype == "Source Qualifier" and query is not None and len(query) > 0:       
                         translated_query = extractSqlQueryFromFile(folder_name, mapping_name, transformation_name, ttype)      
-                        if translated_query: 
+                        if not isinstance(translated_query, Exception):
+                            #print(translated_query)
                             updateSqlQuery(sq, translated_query)
                             query = getSqlQuery(sq)
                         port_names = []
@@ -356,6 +360,7 @@ def processFile(filename):
                         sql_columns = findColumns(query)
                             # HERE ADD EMPTY ALIASES HANDLING
                         if sql_columns == ["parse_error"]:
+                            #print(query)
                             saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, errors_dir_path, query)
                             continue
                         else:
