@@ -37,6 +37,8 @@ def bulkTranslate():
     bool
         True if successful, False otherwise.                    
     """
+    
+
     print("translated")
 
 def saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, output_path, query):
@@ -228,7 +230,7 @@ def getConnectedFrom(mapping, transformation_name):
             connected_from.append(connector.attrib["FROMFIELD"])
     return connected_from
 
-def findColumns(query):
+def findColumns(query, dialect):
     """
     Retrieves and returns a list of the columns from the supplied SQL query. 
 
@@ -244,7 +246,7 @@ def findColumns(query):
     """
     column_names = []
     try:
-        for expression in sqlglot.parse(query, Teradata)[0].find(exp.Select).args["expressions"]:
+        for expression in sqlglot.parse(query, dialect)[0].find(exp.Select).args["expressions"]:
             column_names.append(expression.alias_or_name)
     except Exception as e:
         return ["parse_error"] #try to print the error
@@ -337,7 +339,7 @@ def processFile(filename):
             folder_name = folder.attrib["NAME"]
             for child in folder.iter("MAPPING"):
                 mapping_name = child.attrib["NAME"]
-                for sq in child.iter("TRANSFORMATION"):                  
+                for sq in child.iter("TRANSFORMATION"):                
                     replaceLoadIdExp(sq)
                     field_dict = {} 
                     conflict_update = {}
@@ -346,10 +348,11 @@ def processFile(filename):
                     connected_from = getConnectedFrom(child, transformation_name)
                     if ttype == "Source Qualifier":
                         query = getSqlQuery(sq)
-                    if ttype == "Source Qualifier" and query is not None and len(query) > 0:       
+                    if ttype == "Source Qualifier" and query is not None and len(query) > 0:     
+                        dialect = "Teradata"  
                         translated_query = extractSqlQueryFromFile(folder_name, mapping_name, transformation_name, ttype)      
                         if not isinstance(translated_query, Exception):
-                            #print(translated_query)
+                            dialect = "BigQuery" 
                             updateSqlQuery(sq, translated_query)
                             query = getSqlQuery(sq)
                         port_names = []
@@ -357,10 +360,9 @@ def processFile(filename):
                         for field in field_nodes:
                                 if field.attrib["NAME"] in connected_from:
                                     port_names.append(field.attrib["NAME"])
-                        sql_columns = findColumns(query)
+                        sql_columns = findColumns(query, dialect)
                             # HERE ADD EMPTY ALIASES HANDLING
                         if sql_columns == ["parse_error"]:
-                            #print(query)
                             saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, errors_dir_path, query)
                             continue
                         else:
