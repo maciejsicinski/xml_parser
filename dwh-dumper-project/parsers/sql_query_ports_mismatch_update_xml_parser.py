@@ -349,10 +349,10 @@ def processFile(filename, file_name):
                     if ttype == "Source Qualifier":
                         query = getSqlQuery(sq)
                     if ttype == "Source Qualifier" and query is not None and len(query) > 0:     
-                        dialect = "Teradata"  
+                        dialect = Teradata
                         translated_query = extractSqlQueryFromFile(folder_name, mapping_name, transformation_name, ttype)      
                         if not isinstance(translated_query, Exception):
-                            dialect = "BigQuery" 
+                            dialect = BigQuery
                             updateSqlQuery(sq, translated_query)
                             query = getSqlQuery(sq)
                         port_names = []
@@ -360,9 +360,11 @@ def processFile(filename, file_name):
                         for field in field_nodes:
                                 if field.attrib["NAME"] in connected_from:
                                     port_names.append(field.attrib["NAME"])
+                        #print(query)
                         sql_columns = findColumns(query, dialect)
                             # HERE ADD EMPTY ALIASES HANDLING
                         if sql_columns == ["parse_error"]:
+                           # print(query)
                             saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, errors_dir_path, query)
                             continue
                         else:

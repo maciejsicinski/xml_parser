@@ -12,3 +12,4 @@ output.txt
 casing_isues_sql_override_tables.txt
 dev_stg_views.txt
 *.sql
+*.XML
