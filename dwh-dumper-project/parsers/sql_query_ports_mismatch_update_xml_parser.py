@@ -429,5 +429,5 @@ bulkTranslate()
 for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
         file_path = os.path.join(folder_path, filename)
-        processFile(file_path, file_name)
+        processFile(file_path, filename)
 
