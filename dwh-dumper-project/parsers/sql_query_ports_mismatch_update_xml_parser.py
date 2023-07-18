@@ -37,7 +37,7 @@ def bulkTranslate():
     bool
         True if successful, False otherwise.                    
     """
-    
+
 
     print("translated")
 
@@ -306,7 +306,7 @@ def extractSqlQueryFromFile(folder, mapping, transformation, ttype):
         return e
 
 
-def processFile(filename):
+def processFile(filename, file_name):
     """
     This function parses through the XML files and modifies its content in order to generate informatica mapping compatible with BigQuery.
 
@@ -405,8 +405,9 @@ def processFile(filename):
                             else:
                                 field_dict_2 = field_dict
                             updateConnectors(child, transformation_name, field_dict_2)
-        filename_out = filename + "_OUT.XML"
-        with open(filename_out, "w", encoding="iso-8859-1") as fh:
+        filename_out = file_name + "_OUT.XML"
+        file_path_out = os.path.join(xml_output_dir, filename_out)
+        with open(file_path_out, "w", encoding="iso-8859-1") as fh:
             fh.write("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n")
             fh.write("<!-- Informatica proprietary -->\n")
             fh.write("<!DOCTYPE POWERMART SYSTEM \"powrmart.dtd\">\n")
@@ -428,5 +429,5 @@ bulkTranslate()
 for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
         file_path = os.path.join(folder_path, filename)
-        processFile(file_path)
+        processFile(file_path, file_name)
 
