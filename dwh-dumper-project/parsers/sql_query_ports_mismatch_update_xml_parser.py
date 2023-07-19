@@ -4,6 +4,8 @@ import sqlglot
 from sqlglot import exp
 from sqlglot.dialects.bigquery import BigQuery
 from sqlglot.dialects.teradata import Teradata
+import datetime
+import random
 
 # Folder path to scan
 folder_path = "../xml_metadata"
@@ -14,12 +16,47 @@ translated_folder_path = "../sql_extract/bq_based_queries"
 output_dir_path = "../sql_extract/teradata_based_queries"
 errors_dir_path = "../sql_extract/errors"
 xml_output_dir = "../xml_metadata_out"
+table_names_errors_dir_path = "../sql_extract/errors_table_names"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
 os.makedirs(errors_dir_path, exist_ok=True)
 os.makedirs(translated_folder_path, exist_ok=True)
 os.makedirs(xml_output_dir, exist_ok=True)
+os.makedirs(table_names_errors_dir_path, exist_ok=True)
+
+def isAProperQuery(sql_query):
+    lines = [line.strip() for line in sql_query.splitlines()]
+    non_comment_lines = [line for line in lines if line and not line.startswith("--") and not line.startswith("/*")]
+    if not non_comment_lines:
+        return False
+    else:
+        return True
+
+def addColumnAlias(sql_query, dialect):
+
+    parsed = sqlglot.parse(sql_query, dialect)[0]
+    expressions = parsed.find(exp.Select).args["expressions"]
+    # Find the expression corresponding to the column name
+    j = 0
+    for i, expression in enumerate(expressions):
+        if expression and not expression.alias and hasattr(expression, '__dict__'):
+            if isinstance(expression, exp.Column):  # Skip column names
+                continue
+            j+=1
+            new_expression = f"{expression} AS expression_{i+1}" 
+            parsed_expression = sqlglot.parse_one(new_expression).find(exp.Expression)
+            expressions[i] = parsed_expression
+    # Get the modified SQL query
+    if j > 0:
+        modified_query = str(parsed)
+    else: 
+        modified_query = sql_query
+    return modified_query
+
+    for expression in sqlglot.parse(query, dialect)[0].find(exp.Select).args["expressions"]:
+        column_names.append(expression.alias_or_name)
+    
 
 def bulkTranslate():
     """
@@ -37,9 +74,14 @@ def bulkTranslate():
     bool
         True if successful, False otherwise.                    
     """
+    #generate custom GCS prefix (not used)
+    current_datetime = datetime.datetime.now()
+    datetime_string = current_datetime.strftime("%Y%m%d%H%M%S")
+    random_number = random.randint(0, 9999)
+    result_string = f"{datetime_string}_{random_number:04d}"
 
-
-    print("translated")
+    #print("translated")
+    #print(result_string)
 
 def saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, output_path, query):
     """
@@ -245,11 +287,8 @@ def findColumns(query, dialect):
                     
     """
     column_names = []
-    try:
-        for expression in sqlglot.parse(query, dialect)[0].find(exp.Select).args["expressions"]:
-            column_names.append(expression.alias_or_name)
-    except Exception as e:
-        return ["parse_error"] #try to print the error
+    for expression in sqlglot.parse(query, dialect)[0].find(exp.Select).args["expressions"]:
+        column_names.append(expression.alias_or_name)
     return column_names
 
 def extractQueries(filename):
@@ -333,6 +372,7 @@ def processFile(filename, file_name):
 
     """
     with open(filename, "r", encoding="iso-8859-1") as fh:
+        j = 0
         doc = ET.parse(fh)
         root = doc.getroot()
         for folder in root.iter("FOLDER"):
@@ -349,9 +389,11 @@ def processFile(filename, file_name):
                     if ttype == "Source Qualifier":
                         query = getSqlQuery(sq)
                     if ttype == "Source Qualifier" and query is not None and len(query) > 0:     
-                        dialect = Teradata
-                        translated_query = extractSqlQueryFromFile(folder_name, mapping_name, transformation_name, ttype)      
-                        if not isinstance(translated_query, Exception):
+                        dialect = BigQuery
+                        translated_query = extractSqlQueryFromFile(folder_name, mapping_name, transformation_name, ttype)  
+                        if isinstance(translated_query, Exception) or not isAProperQuery(translated_query):
+                            continue     
+                        if not isinstance(translated_query, Exception) and isAProperQuery(translated_query):
                             dialect = BigQuery
                             updateSqlQuery(sq, translated_query)
                             query = getSqlQuery(sq)
@@ -361,11 +403,23 @@ def processFile(filename, file_name):
                                 if field.attrib["NAME"] in connected_from:
                                     port_names.append(field.attrib["NAME"])
                         #print(query)
-                        sql_columns = findColumns(query, dialect)
-                            # HERE ADD EMPTY ALIASES HANDLING
-                        if sql_columns == ["parse_error"]:
-                           # print(query)
-                            saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, errors_dir_path, query)
+                        #print(folder_name, mapping_name, transformation_name)
+                        #EMPTY ALIASES HANDLING
+                        try:
+                            new_query = addColumnAlias(query, dialect)
+                        except Exception as e:
+                            #print(folder_name, mapping_name, transformation_name)
+                            #print(e)
+                            #print(query)
+                            j+=1
+                            saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, table_names_errors_dir_path, str(e))
+                        #print(query)         
+                        try:           
+                            sql_columns = findColumns(query, dialect)
+                            #print(sql_columns)                       
+                        except Exception as e:
+                            saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, errors_dir_path, str(e))
+                            j += 1
                             continue
                         else:
                             i = 0
@@ -414,10 +468,12 @@ def processFile(filename, file_name):
             fh.write("<!-- Informatica proprietary -->\n")
             fh.write("<!DOCTYPE POWERMART SYSTEM \"powrmart.dtd\">\n")
             fh.write(ET.tostring(root).decode("iso-8859-1"))
-
+        return j
 
 # Main program                                    
 # Process each file in the folder and save each sql query to a separate file
+
+i = 0
 for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
         file_path = os.path.join(folder_path, filename)
@@ -431,5 +487,6 @@ bulkTranslate()
 for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
         file_path = os.path.join(folder_path, filename)
-        processFile(file_path, filename)
+        i += processFile(file_path, filename)
+print(i)
 
