@@ -305,7 +305,7 @@ def updateConflictingPortNames(mapping, transformation_name, new_port, port_name
     for transformation in mapping.iter("TRANSFORMATION"):
         if transformation.attrib["NAME"] == transformation_name:
             for index, port in enumerate(transformation.iter("TRANSFORMFIELD")):
-                if new_port == port.attrib["NAME"]:
+                if new_port.lower()  == port.attrib["NAME"].lower() :
                     updated_name = port.attrib["NAME"] + "__" + str(index)
                     if port.attrib["NAME"] in port_names:
                         updated_ports.append(updated_name)
