@@ -92,6 +92,7 @@ def bulkTranslate():
     with open(run_sh_path, "w") as file:
         file.writelines(lines)
 
+    print("Generated new GCS prefix")
     # Command to find all files in the source directory
 #    find_command = "find ../sql_extract/teradata_based_queries -type f"
 #    rsync_command = "rsync -av --progress {} ../dwh-dumper-project/sql/input/"
@@ -125,16 +126,16 @@ def bulkTranslate():
     # Command to install the package using pip
     install_package_command = "pip install /home/maciej_sicinski/informatica_mapping_translator/install/dwh-migration-tools/client"
 
-    # Execute the commands one by one
-    try:
-        subprocess.run(create_venv_command, shell=True, check=True)
-        subprocess.run(activate_venv_command, shell=True, check=True)
-        subprocess.run(install_package_command, shell=True, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error while executing a command: {e}")
-        exit(1)
+    ## Execute the commands one by one
+    #try:
+    #    subprocess.run(create_venv_command, shell=True, check=True)
+    #    subprocess.run(activate_venv_command, shell=True, check=True)
+    #    subprocess.run(install_package_command, shell=True, check=True)
+    #except subprocess.CalledProcessError as e:
+    #    print(f"Error while executing a command: {e}")
+    #    exit(1)
 
-    print("Commands executed successfully.")
+    #print("Commands executed successfully.")
 
     # Set environment variables
     os.environ["BQMS_VERBOSE"] = "False"
@@ -142,8 +143,12 @@ def bulkTranslate():
     os.environ["BQMS_PROJECT"] = "gcp-ch-d-prj-i-edp"
     os.environ["BQMS_GCS_BUCKET"] = "translation_gcp_api/dev"
 
+    print("Updated environment variables for translation")
+
     # Command to execute the shell script
     run_sh_command = "/home/maciej_sicinski/informatica_mapping_translator/dwh-dumper-project/sql/run.sh"
+
+    print("Executing translation script")
 
     # Execute the shell script
     try:
@@ -155,27 +160,29 @@ def bulkTranslate():
     print("Shell script executed successfully.")
 
 
-    try:
-        subprocess.run(deactivate_venv_command, shell=True, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error while executing a command: {e}")
-        exit(1)
-
-    print("Deactivated virtual environment.")
+    #try:
+    #    subprocess.run(deactivate_venv_command, shell=True, check=True)
+    #except subprocess.CalledProcessError as e:
+    #    print(f"Error while executing a command: {e}")
+    #    exit(1)
+#
+    #print("Deactivated virtual environment.")
 
     # Command to remove the venv directory recursively and forcefully
-    remove_venv_command = "rm -rf venv"
+    #remove_venv_command = "rm -rf venv"
 
     # Execute the command
-    try:
-        subprocess.run(remove_venv_command, shell=True, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error while executing the command: {e}")
-        exit(1)
-
-    print("venv directory removed successfully.")
+    #try:
+    #    subprocess.run(remove_venv_command, shell=True, check=True)
+    #except subprocess.CalledProcessError as e:
+    #    print(f"Error while executing the command: {e}")
+    #    exit(1)
+#
+    #print("venv directory removed successfully.")
 
     # Command to execute the gsutil cp command
+    print("Downloading translated queries")
+
     gsutil_command = f"gsutil -m cp -r gs://translation_gcp_api/dev/{result_string}/translated/* /home/maciej_sicinski/informatica_mapping_translator/sql_extract/bq_based_queries"
 
     # Execute the gsutil command
@@ -482,7 +489,8 @@ def processFile(filename, file_name):
         for folder in root.iter("FOLDER"):
             folder_name = folder.attrib["NAME"]
             for child in folder.iter("MAPPING"):
-                error = 0
+                if mapping_name not in mapping_total:
+                    mapping_total[mapping_name] = True 
                 mapping_name = child.attrib["NAME"]
                 for sq in child.iter("TRANSFORMATION"):                
                     replaceLoadIdExp(sq)
@@ -577,27 +585,32 @@ def processFile(filename, file_name):
 # Main program                                    
 # Process each file in the folder and save each sql query to a separate file
 mapping_errors = {} 
+mapping_total = {} 
 i = 0
 error = 0
 a = 0
 b = 0
+print("Extracting TD queries")
 for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
         file_path = os.path.join(folder_path, filename)
         extractQueries(file_path)
-
+print("Queries extracted")
 # Setup GCP Bulk Translate API and translate the queries
 
 bulkTranslate()
 
 # Process each file in the folder to parse and update the XML's
+print("running main parser")
 for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
         file_path = os.path.join(folder_path, filename)
         a = processFile(file_path, filename)
         i+=a
-print(i)
+print(f"number of parsing errors: {i}")
 
 error = sum(mapping_errors.values())
+total = sum(mapping_total.values())
 
-print(error)
+print(f"number of affected mappings: {error}")
+print(f"number of mappings: {total}")
