@@ -9,17 +9,17 @@ import random
 import subprocess
 
 # Folder path to scan
-run_sh_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/dwh-dumper-project/sql/run.sh"
-folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata"
-teradata_metadata_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/teradata_metadata_extract"
+run_sh_path = "/home/maciej_sicinski/informatica_mapping_translator/dwh-dumper-project/sql/run.sh"
+folder_path = "/home/maciej_sicinski/informatica_mapping_translator/xml_metadata"
+teradata_metadata_path = "/home/maciej_sicinski/informatica_mapping_translator/teradata_metadata_extract"
 
 # Output directory path
-translated_folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/bq_based_queries"
-output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/teradata_based_queries"
-errors_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/errors"
-xml_output_dir = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata_out"
-table_names_errors_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/errors_table_names"
-td_output = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/dwh-dumper-project/sql/input"
+translated_folder_path = "/home/maciej_sicinski/informatica_mapping_translator/sql_extract/bq_based_queries"
+output_dir_path = "/home/maciej_sicinski/informatica_mapping_translator/sql_extract/teradata_based_queries"
+errors_dir_path = "/home/maciej_sicinski/informatica_mapping_translator/sql_extract/errors"
+xml_output_dir = "/home/maciej_sicinski/informatica_mapping_translator/xml_metadata_out"
+table_names_errors_dir_path = "/home/maciej_sicinski/informatica_mapping_translator/sql_extract/errors_table_names"
+td_output = "/home/maciej_sicinski/informatica_mapping_translator/dwh-dumper-project/sql/input"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
@@ -123,7 +123,7 @@ def bulkTranslate():
     deactivate_venv_command = "deactivate"
 
     # Command to install the package using pip
-    install_package_command = "pip install /Users/MaciejSicinski/xml_parsing/dwh-dumper-project/install/dwh-migration-tools/client"
+    install_package_command = "pip install /home/maciej_sicinski/informatica_mapping_translator/install/dwh-migration-tools/client"
 
     # Execute the commands one by one
     try:
@@ -143,7 +143,7 @@ def bulkTranslate():
     os.environ["BQMS_GCS_BUCKET"] = "translation_gcp_api/dev"
 
     # Command to execute the shell script
-    run_sh_command = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/dwh-dumper-project/sql/run.sh"
+    run_sh_command = "/home/maciej_sicinski/informatica_mapping_translator/dwh-dumper-project/sql/run.sh"
 
     # Execute the shell script
     try:
@@ -176,7 +176,7 @@ def bulkTranslate():
     print("venv directory removed successfully.")
 
     # Command to execute the gsutil cp command
-    gsutil_command = f"gsutil -m cp -r gs://translation_gcp_api/dev/{result_string}/translated/* /Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/bq_based_queries"
+    gsutil_command = f"gsutil -m cp -r gs://translation_gcp_api/dev/{result_string}/translated/* /home/maciej_sicinski/informatica_mapping_translator/sql_extract/bq_based_queries"
 
     # Execute the gsutil command
     try:
