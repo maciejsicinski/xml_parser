@@ -489,9 +489,9 @@ def processFile(filename, file_name):
         for folder in root.iter("FOLDER"):
             folder_name = folder.attrib["NAME"]
             for child in folder.iter("MAPPING"):
+                mapping_name = child.attrib["NAME"]                
                 if mapping_name not in mapping_total:
                     mapping_total[mapping_name] = True 
-                mapping_name = child.attrib["NAME"]
                 for sq in child.iter("TRANSFORMATION"):                
                     replaceLoadIdExp(sq)
                     field_dict = {} 
