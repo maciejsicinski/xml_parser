@@ -6,17 +6,20 @@ from sqlglot.dialects.bigquery import BigQuery
 from sqlglot.dialects.teradata import Teradata
 import datetime
 import random
+import subprocess
 
 # Folder path to scan
-folder_path = "../xml_metadata"
-teradata_metadata_path = "../teradata_metadata_extract"
+run_sh_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/dwh-dumper-project/sql/run.sh"
+folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata"
+teradata_metadata_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/teradata_metadata_extract"
 
 # Output directory path
-translated_folder_path = "../sql_extract/bq_based_queries"
-output_dir_path = "../sql_extract/teradata_based_queries"
-errors_dir_path = "../sql_extract/errors"
-xml_output_dir = "../xml_metadata_out"
-table_names_errors_dir_path = "../sql_extract/errors_table_names"
+translated_folder_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/bq_based_queries"
+output_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/teradata_based_queries"
+errors_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/errors"
+xml_output_dir = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/xml_metadata_out"
+table_names_errors_dir_path = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/errors_table_names"
+td_output = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/dwh-dumper-project/sql/input"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
@@ -53,9 +56,6 @@ def addColumnAlias(sql_query, dialect):
     else: 
         modified_query = sql_query
     return modified_query
-
-    for expression in sqlglot.parse(query, dialect)[0].find(exp.Select).args["expressions"]:
-        column_names.append(expression.alias_or_name)
     
 
 def bulkTranslate():
@@ -80,8 +80,112 @@ def bulkTranslate():
     random_number = random.randint(0, 9999)
     result_string = f"{datetime_string}_{random_number:04d}"
 
-    #print("translated")
-    #print(result_string)
+    #modify the run.sh so it will take the generated prefix
+    with open(run_sh_path, "r") as file:
+        lines = file.readlines()
+        for i, line in enumerate(lines):
+            if "BQMS_GCS_PREFIX=" in line:
+                # Update the line with the new value
+                lines[i] = f'BQMS_GCS_PREFIX="{result_string}"\n'
+                break
+
+    with open(run_sh_path, "w") as file:
+        file.writelines(lines)
+
+    # Command to find all files in the source directory
+#    find_command = "find ../sql_extract/teradata_based_queries -type f"
+#    rsync_command = "rsync -av --progress {} ../dwh-dumper-project/sql/input/"
+#
+#    try:
+#        files_to_sync = subprocess.check_output(find_command, shell=True, text=True).splitlines()
+#    except subprocess.CalledProcessError as e:
+#        print(f"Error while executing find command: {e}")
+#        exit(1)
+#
+#        # Sync the files to the destination directory using rsync
+#    for file in files_to_sync:
+#        rsync_cmd = rsync_command.format(file)
+#        try:
+#            subprocess.run(rsync_cmd, shell=True, check=True)
+#        except subprocess.CalledProcessError as e:
+#            print(f"Error while executing rsync command: {e}")
+#            exit(1)
+#
+#    print("Teradata queries copied succesfully")
+
+    # Command to create a virtual environment using python3 -m venv
+    create_venv_command = "python3 -m venv venv"
+
+    # Command to activate the virtual environment
+    activate_venv_command = "source venv/bin/activate"
+
+     # Command to deactivate the virtual environment
+    deactivate_venv_command = "deactivate"
+
+    # Command to install the package using pip
+    install_package_command = "pip install /Users/MaciejSicinski/xml_parsing/dwh-dumper-project/install/dwh-migration-tools/client"
+
+    # Execute the commands one by one
+    try:
+        subprocess.run(create_venv_command, shell=True, check=True)
+        subprocess.run(activate_venv_command, shell=True, check=True)
+        subprocess.run(install_package_command, shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error while executing a command: {e}")
+        exit(1)
+
+    print("Commands executed successfully.")
+
+    # Set environment variables
+    os.environ["BQMS_VERBOSE"] = "False"
+    os.environ["BQMS_MULTITHREADED"] = "True"
+    os.environ["BQMS_PROJECT"] = "gcp-ch-d-prj-i-edp"
+    os.environ["BQMS_GCS_BUCKET"] = "translation_gcp_api/dev"
+
+    # Command to execute the shell script
+    run_sh_command = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/dwh-dumper-project/sql/run.sh"
+
+    # Execute the shell script
+    try:
+        subprocess.run(run_sh_command, shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error while executing the shell script: {e}")
+        exit(1)
+
+    print("Shell script executed successfully.")
+
+
+    try:
+        subprocess.run(deactivate_venv_command, shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error while executing a command: {e}")
+        exit(1)
+
+    print("Deactivated virtual environment.")
+
+    # Command to remove the venv directory recursively and forcefully
+    remove_venv_command = "rm -rf venv"
+
+    # Execute the command
+    try:
+        subprocess.run(remove_venv_command, shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error while executing the command: {e}")
+        exit(1)
+
+    print("venv directory removed successfully.")
+
+    # Command to execute the gsutil cp command
+    gsutil_command = f"gsutil -m cp -r gs://translation_gcp_api/dev/{result_string}/translated/* /Users/MaciejSicinski/xml_parsing/dwh-dumper-project/sql_extract/bq_based_queries"
+
+    # Execute the gsutil command
+    try:
+        subprocess.run(gsutil_command, shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error while executing the gsutil command: {e}")
+        exit(1)
+
+    print("Translated Files copied from GCS to local machine successfully.")
 
 def saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, output_path, query):
     """
@@ -318,7 +422,7 @@ def extractQueries(filename):
                     if ttype == "Source Qualifier":
                         query = getSqlQuery(sq)
                         if query is not None and len(query) > 0:
-                            saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, output_dir_path, query)
+                            saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, td_output, query)
 
 def extractSqlQueryFromFile(folder, mapping, transformation, ttype):
     """
@@ -378,6 +482,7 @@ def processFile(filename, file_name):
         for folder in root.iter("FOLDER"):
             folder_name = folder.attrib["NAME"]
             for child in folder.iter("MAPPING"):
+                error = 0
                 mapping_name = child.attrib["NAME"]
                 for sq in child.iter("TRANSFORMATION"):                
                     replaceLoadIdExp(sq)
@@ -392,6 +497,8 @@ def processFile(filename, file_name):
                         dialect = BigQuery
                         translated_query = extractSqlQueryFromFile(folder_name, mapping_name, transformation_name, ttype)  
                         if isinstance(translated_query, Exception) or not isAProperQuery(translated_query):
+                            if mapping_name not in mapping_errors:
+                                mapping_errors[mapping_name] = True 
                             continue     
                         if not isinstance(translated_query, Exception) and isAProperQuery(translated_query):
                             dialect = BigQuery
@@ -402,24 +509,21 @@ def processFile(filename, file_name):
                         for field in field_nodes:
                                 if field.attrib["NAME"] in connected_from:
                                     port_names.append(field.attrib["NAME"])
-                        #print(query)
-                        #print(folder_name, mapping_name, transformation_name)
-                        #EMPTY ALIASES HANDLING
                         try:
                             new_query = addColumnAlias(query, dialect)
+                            query = new_query
                         except Exception as e:
-                            #print(folder_name, mapping_name, transformation_name)
-                            #print(e)
-                            #print(query)
                             j+=1
                             saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, table_names_errors_dir_path, str(e))
-                        #print(query)         
+                            if mapping_name not in mapping_errors:
+                                mapping_errors[mapping_name] = True      
                         try:           
-                            sql_columns = findColumns(query, dialect)
-                            #print(sql_columns)                       
+                            sql_columns = findColumns(query, dialect)                 
                         except Exception as e:
                             saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, errors_dir_path, str(e))
                             j += 1
+                            if mapping_name not in mapping_errors:
+                                mapping_errors[mapping_name] = True 
                             continue
                         else:
                             i = 0
@@ -472,8 +576,11 @@ def processFile(filename, file_name):
 
 # Main program                                    
 # Process each file in the folder and save each sql query to a separate file
-
+mapping_errors = {} 
 i = 0
+error = 0
+a = 0
+b = 0
 for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
         file_path = os.path.join(folder_path, filename)
@@ -487,6 +594,10 @@ bulkTranslate()
 for filename in os.listdir(folder_path):
     if filename.endswith(".XML"):
         file_path = os.path.join(folder_path, filename)
-        i += processFile(file_path, filename)
+        a = processFile(file_path, filename)
+        i+=a
 print(i)
 
+error = sum(mapping_errors.values())
+
+print(error)
