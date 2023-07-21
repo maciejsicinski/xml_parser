@@ -12,17 +12,17 @@ prefix_vm = "/home/maciej_sicinski/informatica_mapping_translator/"
 prefix_mac = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/"
 
 # Folder path to scan
-run_sh_path = f"{prefix_mac}dwh-dumper-project/sql/run.sh"
-folder_path = f"{prefix_mac}xml_metadata"
-teradata_metadata_path = f"{prefix_mac}teradata_metadata_extract"
+run_sh_path = f"{prefix_vm}dwh-dumper-project/sql/run.sh"
+folder_path = f"{prefix_vm}xml_metadata"
+teradata_metadata_path = f"{prefix_vm}teradata_metadata_extract"
 
 # Output directory path
-translated_folder_path = f"{prefix_mac}sql_extract/bq_based_queries"
-output_dir_path = f"{prefix_mac}sql_extract/teradata_based_queries"
-errors_dir_path = f"{prefix_mac}sql_extract/errors"
-xml_output_dir = f"{prefix_mac}xml_metadata_out"
-table_names_errors_dir_path = f"{prefix_mac}sql_extract/errors_table_names"
-td_output = f"{prefix_mac}dwh-dumper-project/sql/input"
+translated_folder_path = f"{prefix_vm}sql_extract/bq_based_queries"
+output_dir_path = f"{prefix_vm}sql_extract/teradata_based_queries"
+errors_dir_path = f"{prefix_vm}sql_extract/errors"
+xml_output_dir = f"{prefix_vm}xml_metadata_out"
+table_names_errors_dir_path = f"{prefix_vm}sql_extract/errors_table_names"
+td_output = f"{prefix_vm}dwh-dumper-project/sql/input"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
