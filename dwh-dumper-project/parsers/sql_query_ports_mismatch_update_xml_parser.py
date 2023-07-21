@@ -6,7 +6,7 @@ from sqlglot.dialects.bigquery import BigQuery
 from sqlglot.dialects.teradata import Teradata
 import datetime
 import random
-import subprocess
+import subprocess 
 
 prefix_vm = "/home/maciej_sicinski/informatica_mapping_translator/"
 prefix_mac = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/"
