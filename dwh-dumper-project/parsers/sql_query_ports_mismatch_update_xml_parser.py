@@ -8,18 +8,21 @@ import datetime
 import random
 import subprocess
 
+prefix_vm = "/home/maciej_sicinski/informatica_mapping_translator/"
+prefix_mac = "/Users/MaciejSicinski/xml_parsing/dwh-dumper-project/"
+
 # Folder path to scan
-run_sh_path = "/home/maciej_sicinski/informatica_mapping_translator/dwh-dumper-project/sql/run.sh"
-folder_path = "/home/maciej_sicinski/informatica_mapping_translator/xml_metadata"
-teradata_metadata_path = "/home/maciej_sicinski/informatica_mapping_translator/teradata_metadata_extract"
+run_sh_path = f"{prefix_mac}dwh-dumper-project/sql/run.sh"
+folder_path = f"{prefix_mac}xml_metadata"
+teradata_metadata_path = f"{prefix_mac}teradata_metadata_extract"
 
 # Output directory path
-translated_folder_path = "/home/maciej_sicinski/informatica_mapping_translator/sql_extract/bq_based_queries"
-output_dir_path = "/home/maciej_sicinski/informatica_mapping_translator/sql_extract/teradata_based_queries"
-errors_dir_path = "/home/maciej_sicinski/informatica_mapping_translator/sql_extract/errors"
-xml_output_dir = "/home/maciej_sicinski/informatica_mapping_translator/xml_metadata_out"
-table_names_errors_dir_path = "/home/maciej_sicinski/informatica_mapping_translator/sql_extract/errors_table_names"
-td_output = "/home/maciej_sicinski/informatica_mapping_translator/dwh-dumper-project/sql/input"
+translated_folder_path = f"{prefix_mac}sql_extract/bq_based_queries"
+output_dir_path = f"{prefix_mac}sql_extract/teradata_based_queries"
+errors_dir_path = f"{prefix_mac}sql_extract/errors"
+xml_output_dir = f"{prefix_mac}xml_metadata_out"
+table_names_errors_dir_path = f"{prefix_mac}sql_extract/errors_table_names"
+td_output = f"{prefix_mac}dwh-dumper-project/sql/input"
 
 # Create the output directory if it doesn't exist
 os.makedirs(output_dir_path, exist_ok=True)
@@ -102,49 +105,6 @@ def bulkTranslate():
         file.writelines(lines)
 
     print("Generated new GCS prefix")
-    # Command to find all files in the source directory
-#    find_command = "find ../sql_extract/teradata_based_queries -type f"
-#    rsync_command = "rsync -av --progress {} ../dwh-dumper-project/sql/input/"
-#
-#    try:
-#        files_to_sync = subprocess.check_output(find_command, shell=True, text=True).splitlines()
-#    except subprocess.CalledProcessError as e:
-#        print(f"Error while executing find command: {e}")
-#        exit(1)
-#
-#        # Sync the files to the destination directory using rsync
-#    for file in files_to_sync:
-#        rsync_cmd = rsync_command.format(file)
-#        try:
-#            subprocess.run(rsync_cmd, shell=True, check=True)
-#        except subprocess.CalledProcessError as e:
-#            print(f"Error while executing rsync command: {e}")
-#            exit(1)
-#
-#    print("Teradata queries copied succesfully")
-
-    # Command to create a virtual environment using python3 -m venv
-    create_venv_command = "python3 -m venv venv"
-
-    # Command to activate the virtual environment
-    activate_venv_command = "source venv/bin/activate"
-
-     # Command to deactivate the virtual environment
-    deactivate_venv_command = "deactivate"
-
-    # Command to install the package using pip
-    install_package_command = "pip install /home/maciej_sicinski/informatica_mapping_translator/install/dwh-migration-tools/client"
-
-    ## Execute the commands one by one
-    #try:
-    #    subprocess.run(create_venv_command, shell=True, check=True)
-    #    subprocess.run(activate_venv_command, shell=True, check=True)
-    #    subprocess.run(install_package_command, shell=True, check=True)
-    #except subprocess.CalledProcessError as e:
-    #    print(f"Error while executing a command: {e}")
-    #    exit(1)
-
-    #print("Commands executed successfully.")
 
     # Set environment variables
     os.environ["BQMS_VERBOSE"] = "False"
@@ -155,7 +115,7 @@ def bulkTranslate():
     print("Updated environment variables for translation")
 
     # Command to execute the shell script
-    run_sh_command = "/home/maciej_sicinski/informatica_mapping_translator/dwh-dumper-project/sql/run.sh"
+    run_sh_command = "{prefix_mac}dwh-dumper-project/sql/run.sh"
 
     print("Executing translation script")
 
@@ -168,31 +128,10 @@ def bulkTranslate():
 
     print("Shell script executed successfully.")
 
-
-    #try:
-    #    subprocess.run(deactivate_venv_command, shell=True, check=True)
-    #except subprocess.CalledProcessError as e:
-    #    print(f"Error while executing a command: {e}")
-    #    exit(1)
-#
-    #print("Deactivated virtual environment.")
-
-    # Command to remove the venv directory recursively and forcefully
-    #remove_venv_command = "rm -rf venv"
-
-    # Execute the command
-    #try:
-    #    subprocess.run(remove_venv_command, shell=True, check=True)
-    #except subprocess.CalledProcessError as e:
-    #    print(f"Error while executing the command: {e}")
-    #    exit(1)
-#
-    #print("venv directory removed successfully.")
-
     # Command to execute the gsutil cp command
     print("Downloading translated queries")
 
-    gsutil_command = f"gsutil -m cp -r gs://translation_gcp_api/dev/{result_string}/translated/* /home/maciej_sicinski/informatica_mapping_translator/sql_extract/bq_based_queries"
+    gsutil_command = f"gsutil -m cp -r gs://translation_gcp_api/dev/{result_string}/translated/* {prefix_mac}sql_extract/bq_based_queries"
 
     # Execute the gsutil command
     try:
@@ -522,6 +461,7 @@ def processFile(filename, file_name):
                             try:
                                 translated_query = removePrefixFromSQL(translated_query)
                             except Exception as e:
+                                print(e)
                                 j+=1
                                 saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, table_names_errors_dir_path, str(e)) 
                                 if mapping_name not in mapping_errors:

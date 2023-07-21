@@ -13,3 +13,10 @@ casing_isues_sql_override_tables.txt
 dev_stg_views.txt
 *.sql
 *.XML
+*.XML
+*.XML
+*.zip
+*.XML
+*.XML
+dwh-dumper-project/xml_metadata_test/m_MOB_T_CLF_GIFTING_1_.XML_OUT.XML
+*.XML
