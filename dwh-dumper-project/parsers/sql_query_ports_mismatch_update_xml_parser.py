@@ -115,7 +115,7 @@ def bulkTranslate():
     print("Updated environment variables for translation")
 
     # Command to execute the shell script
-    run_sh_command = "{prefix_vm}dwh-dumper-project/sql/run.sh"
+    run_sh_command = f"{prefix_vm}dwh-dumper-project/sql/run.sh"
 
     print("Executing translation script")
 
