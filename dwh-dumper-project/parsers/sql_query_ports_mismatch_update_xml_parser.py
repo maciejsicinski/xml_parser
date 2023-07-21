@@ -115,7 +115,7 @@ def bulkTranslate():
     print("Updated environment variables for translation")
 
     # Command to execute the shell script
-    run_sh_command = "{prefix_mac}dwh-dumper-project/sql/run.sh"
+    run_sh_command = "{prefix_vm}dwh-dumper-project/sql/run.sh"
 
     print("Executing translation script")
 
@@ -131,7 +131,7 @@ def bulkTranslate():
     # Command to execute the gsutil cp command
     print("Downloading translated queries")
 
-    gsutil_command = f"gsutil -m cp -r gs://translation_gcp_api/dev/{result_string}/translated/* {prefix_mac}sql_extract/bq_based_queries"
+    gsutil_command = f"gsutil -m cp -r gs://translation_gcp_api/dev/{result_string}/translated/* {prefix_vm}sql_extract/bq_based_queries"
 
     # Execute the gsutil command
     try:
