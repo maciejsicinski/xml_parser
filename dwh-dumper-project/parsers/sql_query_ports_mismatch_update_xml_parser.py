@@ -28,6 +28,15 @@ os.makedirs(translated_folder_path, exist_ok=True)
 os.makedirs(xml_output_dir, exist_ok=True)
 os.makedirs(table_names_errors_dir_path, exist_ok=True)
 
+def removePrefixFromSQL(sql_query):
+    
+    string_to_replace_from = "`gcp-ch-d-prj-i-edp`.Dev_Stg."
+    string_to_replace_to = "Dev_Stg."
+
+    modified_query = sql_query.replace(string_to_replace_from, string_to_replace_to)
+   
+    return modified_query
+
 def isAProperQuery(sql_query):
     lines = [line.strip() for line in sql_query.splitlines()]
     non_comment_lines = [line for line in lines if line and not line.startswith("--") and not line.startswith("/*")]
@@ -510,6 +519,13 @@ def processFile(filename, file_name):
                             continue     
                         if not isinstance(translated_query, Exception) and isAProperQuery(translated_query):
                             dialect = BigQuery
+                            try:
+                                translated_query = removePrefixFromSQL(translated_query)
+                            except Exception as e:
+                                j+=1
+                                saveSqlQueryToFile(folder_name, mapping_name, transformation_name, ttype, table_names_errors_dir_path, str(e)) 
+                                if mapping_name not in mapping_errors:
+                                    mapping_errors[mapping_name] = True 
                             updateSqlQuery(sq, translated_query)
                             query = getSqlQuery(sq)
                         port_names = []
